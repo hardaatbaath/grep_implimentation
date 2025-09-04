@@ -1,21 +1,12 @@
 #include <iostream>
 #include <string>
 
-bool find_number(const std::string& input_line, const std::string& pattern) {
-    for (int i = 0; i < 10; i++) {
-        if (input_line.find(std::to_string(i)) != std::string::npos) {
-            return true;
-        }
-    }
-    return false;
-}
-
 bool match_pattern(const std::string& input_line, const std::string& pattern) {
-    if (pattern == R"(\d)"){ // Using raw string literal to avoid escaping the backslash
-        return find_number(input_line, pattern);
-    }
-    else if (pattern.length() == 1) {
+    if (pattern.length() == 1) {
         return input_line.find(pattern) != std::string::npos;
+    }
+    else if (pattern == R"(\d)"){ // Using raw string literal to avoid escaping the backslash, can also use \\d
+        return input_line.find_first_of("1234567890") != std::string::npos; // Better than looping through all the numbers
     }
     else {
         throw std::runtime_error("Unhandled pattern " + pattern);
