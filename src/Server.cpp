@@ -11,6 +11,9 @@ bool match_pattern(const std::string& input_line, const std::string& pattern) {
     else if (pattern == "\\w") {
         return (input_line.find_first_of("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_") != std::string::npos) || (match_pattern(input_line, "\\d"));
     }
+    else if (pattern.starts_with("[") && pattern.ends_with("]")) {
+        return input_line.find_first_of(pattern.substr(1, pattern.length()-1)) != std::string::npos;
+    }
     else {
         throw std::runtime_error("Unhandled pattern " + pattern);
     }
