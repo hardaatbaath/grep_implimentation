@@ -20,7 +20,7 @@ bool match_pattern(const std::string& input_line, const std::string& pattern) {
                     length -= 1;
                 }
             }
-            return length==0; // If length is greater than 0, then at least one char didn't match
+            return length!=0; // If length is greater than 0, then at least one char didn't match
         }
         return input_line.find_first_of(pattern.substr(1, pattern.length()-2)) != std::string::npos; // -2 because substr takes (pos, length)
     }
