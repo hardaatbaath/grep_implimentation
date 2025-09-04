@@ -1,8 +1,20 @@
 #include <iostream>
 #include <string>
 
+bool find_number(const std::string& input_line, const std::string& pattern) {
+    for (int i = 0; i < 10; i++) {
+        if (input_line.find(std::to_string(i)) != std::string::npos) {
+            return true;
+        }
+    }
+    return false;
+}
+
 bool match_pattern(const std::string& input_line, const std::string& pattern) {
-    if (pattern.length() == 1) {
+    if (pattern == "\d"){
+        return find_number(input_line, pattern);
+    }
+    else if (pattern.length() == 1) {
         return input_line.find(pattern) != std::string::npos;
     }
     else {
