@@ -13,6 +13,8 @@ bool match_pattern(const std::string& input_line, const std::string& pattern) {
     }
     else if (pattern.starts_with("[") && pattern.ends_with("]")) {
         if (pattern.starts_with("[^")) {
+            std::cout << pattern.substr(2, pattern.length()-3) << std::endl;
+            std::cout << input_line.find_first_of(pattern.substr(2, pattern.length()-3)) << std::endl;
             return !(input_line.find_first_of(pattern.substr(2, pattern.length()-3)) == std::string::npos);
         }
         return input_line.find_first_of(pattern.substr(1, pattern.length()-2)) != std::string::npos; // -2 because substr takes (pos, length)
