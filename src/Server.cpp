@@ -11,7 +11,7 @@ bool find_number(const std::string& input_line, const std::string& pattern) {
 }
 
 bool match_pattern(const std::string& input_line, const std::string& pattern) {
-    if (pattern == "\d"){
+    if (pattern == R"(\d)"){ // Using raw string literal to avoid escaping the backslash
         return find_number(input_line, pattern);
     }
     else if (pattern.length() == 1) {
