@@ -8,6 +8,9 @@ bool match_pattern(const std::string& input_line, const std::string& pattern) {
     else if (pattern == R"(\d)"){ // Using raw string literal to avoid escaping the backslash, can also use \\d
         return input_line.find_first_of("1234567890") != std::string::npos; // Better than looping through all the numbers
     }
+    else if (pattern == "\\w") {
+        return (input_line.find_first_of("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_") != std::string::npos) || (match_pattern(input_line, "\\d"));
+    }
     else {
         throw std::runtime_error("Unhandled pattern " + pattern);
     }
