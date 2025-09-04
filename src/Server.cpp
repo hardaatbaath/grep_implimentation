@@ -13,12 +13,11 @@ bool match_pattern(const std::string& input_line, const std::string& pattern) {
     }
     else if (pattern.starts_with("[") && pattern.ends_with("]")) {
         if (pattern.starts_with("[^")) {
-            int length = pattern.length();
-            std::string set = pattern.substr(2, length-3);
+            int length = pattern.length()-3;
+            std::string set = pattern.substr(2, length);
             for (char c : set) {
                 if (input_line.find(c) != std::string::npos) {  // For all the chars, none should be in the input line
                     length -= 1;
-                    std::cout << "Length: " << length << std::endl;
                 }
             }
             return length!=0; // If length is greater than 0, then at least one char didn't match
