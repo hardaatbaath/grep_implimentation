@@ -12,6 +12,9 @@ bool match_pattern(const std::string& input_line, const std::string& pattern) {
         return (input_line.find_first_of("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_") != std::string::npos) || (match_pattern(input_line, "\\d"));
     }
     else if (pattern.starts_with("[") && pattern.ends_with("]")) {
+        if (pattern.starts_with("[^")) {
+            return !(input_line.find_first_of(pattern.substr(2, pattern.length()-3)) == std::string::npos);
+        }
         return input_line.find_first_of(pattern.substr(1, pattern.length()-2)) != std::string::npos; // -2 because substr takes (pos, length)
     }
     else {
