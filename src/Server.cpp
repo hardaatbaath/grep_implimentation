@@ -18,6 +18,7 @@ bool match_pattern(const std::string& input_line, const std::string& pattern) {
             for (char c : set) {
                 if (input_line.find(c) != std::string::npos) {  // For all the chars, none should be in the input line
                     length -= 1;
+                    std::cout << "Length: " << length << std::endl
                 }
             }
             return length!=0; // If length is greater than 0, then at least one char didn't match
