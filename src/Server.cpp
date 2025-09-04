@@ -13,7 +13,13 @@ bool match_pattern(const std::string& input_line, const std::string& pattern) {
     }
     else if (pattern.starts_with("[") && pattern.ends_with("]")) {
         if (pattern.starts_with("[^")) {
-            return input_line.find_first_of(pattern.substr(2, pattern.length()-3)) == std::string::npos; // For cases when the string is not present
+            std::string set = pattern.substr(2, pattern.length()-3);
+            for (char c : set) {
+                if (input_line.find(c) != std::string::npos) {  // For all the chars, none should be in the input line
+                    return false;
+                }
+            }
+            return true;
         }
         return input_line.find_first_of(pattern.substr(1, pattern.length()-2)) != std::string::npos; // -2 because substr takes (pos, length)
     }
