@@ -42,8 +42,8 @@ bool match_pattern(const std::string& input_line, const std::string& pattern, co
 // }
 
 bool match_string(const std::string &input_line, const std::string &pattern) {
-    pattern_length = pattern.length();
-    input_length = input_line.length();
+    int pattern_length = pattern.length();
+    int input_length = input_line.length();
 
     // Try matching the pattern starting at each position in the input
     for (int start_pos = 0; start_pos <= input_length - pattern_length; start_pos++) {
@@ -60,7 +60,7 @@ bool match_string(const std::string &input_line, const std::string &pattern) {
             input_pos++;
             pattern_pos++;
         }
-        # If no match found, reset pattern_pos
+        // If no match found, reset pattern_pos
         pattern_pos = 0;
         
         // If we matched the entire pattern, return true
