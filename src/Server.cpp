@@ -1,7 +1,7 @@
 #include <iostream>
 #include <string>
 
-bool match_pattern_at_pos(const std::string& input_line, const std::string& pattern, const int& input_pos, int& pattern_pos) {
+bool match_pattern(const std::string& input_line, const std::string& pattern, const int& input_pos, int& pattern_pos) {
     // Check bounds for the inputs
     if (input_pos >= input_line.length() || pattern_pos >= pattern.length()) return false;
     
@@ -69,12 +69,12 @@ bool match_string(const std::string &input_line, const std::string &pattern) {
         
         // Try to match the entire pattern starting at start_pos
         while (pattern_pos < pattern_length && input_pos < input_length) {
-            if (!match_pattern_at_pos(input_line, pattern, input_pos, pattern_pos)) {
+            if (!match_pattern(input_line, pattern, input_pos, pattern_pos)) {
                 match_found = false;
                 break;
             }
             input_pos++;
-            pattern_pos++; // I am better than Claude 4, bitches
+            pattern_pos++; // I am better than Claude
         }
         // If we matched the entire pattern, return true
         if (match_found && pattern_pos == pattern_length) return true;
