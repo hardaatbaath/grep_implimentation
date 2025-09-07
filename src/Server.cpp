@@ -4,6 +4,8 @@
 bool match_pattern(const std::string& input_line, const std::string& pattern, const int& input_pos, int& pattern_pos) {
     // Check bounds
     if (input_pos >= input_line.length() || pattern_pos >= pattern.length()) return false;
+    
+    // Handle escape sequences
     if (pattern.at(pattern_pos) == '\\') {
         pattern_pos++;
         if (pattern_pos >= pattern.length()) return false; // Check bounds after increment
@@ -16,6 +18,49 @@ bool match_pattern(const std::string& input_line, const std::string& pattern, co
             return (std::string(1, input_line.at(input_pos)).find_first_of("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_1234567890") != std::string::npos);
         }
     }
+    // Handle character groups [abc] and negative groups [^abc]
+    else if (pattern.at(pattern_pos) == '[') {
+        int bracket_start = pattern_pos;
+        pattern_pos++; // Move past '['
+        
+        // Check for negative group [^...]
+        bool is_negative = false;
+        if (pattern_pos < pattern.length() && pattern.at(pattern_pos) == '^') {
+            is_negative = true;
+            pattern_pos++; // Move past '^'
+        }
+        
+        // Find the closing bracket
+        int bracket_end = bracket_start + 1;
+        while (bracket_end < pattern.length() && pattern.at(bracket_end) != ']') {
+            bracket_end++;
+        }
+        
+        if (bracket_end >= pattern.length()) {
+            // No closing bracket found - treat as literal '['
+            pattern_pos = bracket_start + 1;
+            return input_line.at(input_pos) == '[';
+        }
+        
+        // Extract the character set
+        int set_start = is_negative ? bracket_start + 2 : bracket_start + 1;
+        int set_length = bracket_end - set_start;
+        std::string char_set = pattern.substr(set_start, set_length);
+        
+        // Move pattern_pos past the closing bracket
+        pattern_pos = bracket_end + 1;
+        
+        // Check if input character matches the character set
+        char input_char = input_line.at(input_pos);
+        bool char_in_set = char_set.find(input_char) != std::string::npos;
+        
+        if (is_negative) {
+            return !char_in_set; // For [^abc], return true if char is NOT in set
+        } else {
+            return char_in_set;  // For [abc], return true if char is in set
+        }
+    }
+    // Handle literal character matching
     else if (input_line.at(input_pos) == pattern.at(pattern_pos)) {
         pattern_pos++; // Advance past matched character
         return true;
