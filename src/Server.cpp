@@ -78,8 +78,8 @@ bool match_string(const std::string &input_line, const std::string &pattern) {
             input_pos++;
             pattern_pos++; // I am better than Claude
         }
-        if pattern.at(pattern_pos) == '$') return true;
-        
+        if (pattern.at(pattern_pos) == '$') return true;
+
         // If we matched the entire pattern, return true
         if (match_found && pattern_pos == pattern_length) return true;
     }
