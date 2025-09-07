@@ -8,19 +8,19 @@ bool match_pattern(const std::string& input_line, const std::string& pattern, co
         pattern_pos++;
         if (pattern_pos >= pattern.length()) return false; // Check bounds after increment
         if(pattern.at(pattern_pos) == 'd') {
-            bool result = (std::string(1, input_line.at(input_pos)).find_first_of("1234567890") != std::string::npos);
-            pattern_pos++; // Advance to next character in pattern
-            return result;
+            pattern_pos++; // Advance past 'd'
+            return (std::string(1, input_line.at(input_pos)).find_first_of("1234567890") != std::string::npos);
         }
         else if(pattern.at(pattern_pos) == 'w') {
-            bool result = (std::string(1, input_line.at(input_pos)).find_first_of("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_1234567890") != std::string::npos);
-            pattern_pos++; // Advance to next character in pattern
-            return result;
+            pattern_pos++; // Advance past 'w'
+            return (std::string(1, input_line.at(input_pos)).find_first_of("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_1234567890") != std::string::npos);
         }
     }
-    else if (input_line.at(input_pos) == pattern.at(pattern_pos)) return true; // Just return true, don't recurse
-    else return false;
-    return true;
+    else if (input_line.at(input_pos) == pattern.at(pattern_pos)) {
+        pattern_pos++; // Advance past matched character
+        return true;
+    }
+    return false;
 }
 
 //         return input_line.find(pattern) != std::string::npos;
@@ -66,7 +66,7 @@ bool match_string(const std::string &input_line, const std::string &pattern) {
                 break;
             }
             input_pos++;
-            pattern_pos++;
+            // Don't increment pattern_pos here - match_pattern already does it
         }
         // If we matched the entire pattern, return true
         if (match_found && pattern_pos == pattern_length) return true;
