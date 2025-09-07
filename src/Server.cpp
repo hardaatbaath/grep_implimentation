@@ -74,7 +74,7 @@ bool match_string(const std::string &input_line, const std::string &pattern) {
                 break;
             }
             input_pos++;
-            pattern_pos++; // I am better than Claude
+            pattern_pos++; // I am better than Claude 4, bitches
         }
         // If we matched the entire pattern, return true
         if (match_found && pattern_pos == pattern_length) return true;
