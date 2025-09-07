@@ -1,15 +1,18 @@
 #include <iostream>
 #include <string>
 
-bool match_pattern(const std::string& input_line, const std::string& pattern,const int& input_pos, int& pattern_pos) {
+bool match_pattern(const std::string& input_line, const std::string& pattern, const int& input_pos, int& pattern_pos) {
+    // Check bounds
+    if (input_pos >= input_line.length() || pattern_pos >= pattern.length()) return false;
     if (pattern.at(pattern_pos) == '\\') {
         pattern_pos++;
-        if(pattern.at(pattern_pos) == 'd') return (std::string(1, input_line.at(input_pos)).find_first_of("1234567890") != std::string::npos) || (match_pattern(input_line, pattern, input_pos, pattern_pos));
-        else if(pattern.at(pattern_pos) == 'w') return (std::string(1, input_line.at(input_pos)).find_first_of("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_") != std::string::npos) || (match_pattern(input_line, pattern, input_pos, pattern_pos));
+        if (pattern_pos >= pattern.length()) return false; // Check bounds after increment
+        if(pattern.at(pattern_pos) == 'd') return (std::string(1, input_line.at(input_pos)).find_first_of("1234567890") != std::string::npos);
+        else if(pattern.at(pattern_pos) == 'w') return (std::string(1, input_line.at(input_pos)).find_first_of("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_1234567890") != std::string::npos);
     }
-    else if (input_line.at(input_pos) == pattern.at(pattern_pos)) return match_pattern(input_line, pattern, input_pos, pattern_pos);
-    else return 0;
-    return 1;
+    else if (input_line.at(input_pos) == pattern.at(pattern_pos)) return true; // Just return true, don't recurse
+    else return false;
+    return true;
 }
 
 //         return input_line.find(pattern) != std::string::npos;
@@ -39,16 +42,26 @@ bool match_pattern(const std::string& input_line, const std::string& pattern,con
 // }
 
 bool match_string(const std::string &input_line, const std::string &pattern) {
-    int input_pos = 0;
-    int pattern_pos = 0;
-    do{
-        if (match_pattern(input_line, pattern, input_pos, pattern_pos)){
-            return 1;
+    // Try matching the pattern starting at each position in the input
+    for (int start_pos = 0; start_pos <= input_line.length() - pattern.length(); start_pos++) {
+        int input_pos = start_pos;
+        int pattern_pos = 0;
+        bool match_found = true;
+        
+        // Try to match the entire pattern starting at start_pos
+        while (pattern_pos < pattern.length() && input_pos < input_line.length()) {
+            if (!match_pattern(input_line, pattern, input_pos, pattern_pos)) {
+                match_found = false;
+                break;
+            }
+            input_pos++;
+            pattern_pos++;
         }
-        input_pos++;
-        pattern_pos++;
-    } while (input_pos < input_line.length() && pattern_pos < pattern.length());
-    return pattern_pos == pattern.length();
+        
+        // If we matched the entire pattern, return true
+        if (match_found && pattern_pos == pattern.length()) return true;
+    }
+    return false;
 }
 
 int main(int argc, char* argv[]) {
@@ -72,8 +85,6 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
-    // Uncomment this block to pass the first stage
-    
     std::string input_line;
     std::getline(std::cin, input_line); // To get the complete input line with spaces
     
