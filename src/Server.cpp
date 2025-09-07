@@ -7,7 +7,9 @@ bool match_pattern(const std::string& input_line, const std::string& pattern,con
         if(pattern.at(pattern_pos) == 'd') return (std::string(1, input_line.at(input_pos)).find_first_of("1234567890") != std::string::npos) || (match_pattern(input_line, pattern, input_pos, pattern_pos));
         else if(pattern.at(pattern_pos) == 'w') return (std::string(1, input_line.at(input_pos)).find_first_of("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_") != std::string::npos) || (match_pattern(input_line, pattern, input_pos, pattern_pos));
     }
-    return input_line.at(input_pos) == pattern.at(pattern_pos);
+    else if (input_line.at(input_pos) == pattern.at(pattern_pos)) return match_pattern(input_line, pattern, input_pos, pattern_pos);
+    else return 0;
+    return 1;
 }
 
 //         return input_line.find(pattern) != std::string::npos;
@@ -40,13 +42,13 @@ bool match_string(const std::string &input_line, const std::string &pattern) {
     int input_pos = 0;
     int pattern_pos = 0;
     for (int i = 0; i < input_line.length(); i++){
-        if (!match_pattern(input_line, pattern, input_pos, pattern_pos)){
-            return false;
+        if (match_pattern(input_line, pattern, input_pos, pattern_pos)){
+            return 1;
         }
         input_pos++;
         pattern_pos++;
     }
-    return true;
+    return 0;
 }
 
 int main(int argc, char* argv[]) {
