@@ -9,14 +9,8 @@ bool match_pattern(const std::string& input_line, const std::string& pattern, co
     if (pattern.at(pattern_pos) == '\\') {
         pattern_pos++;
         if (pattern_pos >= pattern.length()) return false; // Check bounds after increment
-        if(pattern.at(pattern_pos) == 'd') {
-            // pattern_pos++; // Advance past 'd'
-            return (std::string(1, input_line.at(input_pos)).find_first_of("1234567890") != std::string::npos);
-        }
-        else if(pattern.at(pattern_pos) == 'w') {
-            // pattern_pos++; // Advance past 'w'
-            return (std::string(1, input_line.at(input_pos)).find_first_of("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_1234567890") != std::string::npos);
-        }
+        if(pattern.at(pattern_pos) == 'd') return (std::string(1, input_line.at(input_pos)).find_first_of("1234567890") != std::string::npos);
+        else if(pattern.at(pattern_pos) == 'w') return (std::string(1, input_line.at(input_pos)).find_first_of("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_1234567890") != std::string::npos);
     }
 
     // Handle character groups [abc] and negative groups [^abc]
@@ -26,10 +20,7 @@ bool match_pattern(const std::string& input_line, const std::string& pattern, co
         
         // Check for negative group [^...]
         bool is_negative = false;
-        if (pattern_pos < pattern.length() && pattern.at(pattern_pos) == '^') {
-            is_negative = true;
-            // pattern_pos++; // Move past '^'
-        }
+        if (pattern_pos < pattern.length() && pattern.at(pattern_pos) == '^') is_negative = true;
         
         // Find the closing bracket
         int bracket_end = bracket_start + 1;
@@ -39,7 +30,7 @@ bool match_pattern(const std::string& input_line, const std::string& pattern, co
         
         // In case the bracket is not closed, treat it as a literal '['
         if (bracket_end >= pattern.length()) {
-            pattern_pos = bracket_start;// + 1;
+            pattern_pos = bracket_start;
             return input_line.at(input_pos) == '[';
         }
         
@@ -49,7 +40,7 @@ bool match_pattern(const std::string& input_line, const std::string& pattern, co
         std::string char_set = pattern.substr(set_start, set_length);
         
         // Move pattern_pos past the closing bracket
-        pattern_pos = bracket_end;// + 1;
+        pattern_pos = bracket_end;
         
         // Check if input character matches the character set
         char input_char = input_line.at(input_pos);
@@ -63,10 +54,7 @@ bool match_pattern(const std::string& input_line, const std::string& pattern, co
     }
 
     // Handle literal character matching
-    else if (input_line.at(input_pos) == pattern.at(pattern_pos)) {
-        // pattern_pos++; // Advance past matched character
-        return true;
-    }
+    else if (input_line.at(input_pos) == pattern.at(pattern_pos)) return true;
 
     return false;
 }
@@ -88,7 +76,7 @@ bool match_string(const std::string &input_line, const std::string &pattern) {
                 break;
             }
             input_pos++;
-            pattern_pos++;
+            pattern_pos++; // I am better than Claude
         }
         // If we matched the entire pattern, return true
         if (match_found && pattern_pos == pattern_length) return true;
