@@ -1,7 +1,7 @@
 #include <iostream>
 #include <string>
 
-bool match_pattern(const std::string& input_line, const std::string& pattern, const int& input_pos, int& pattern_pos) {
+bool match_pattern_at_pos(const std::string& input_line, const std::string& pattern, const int& input_pos, int& pattern_pos) {
     // Check bounds for the inputs
     if (input_pos >= input_line.length() || pattern_pos >= pattern.length()) return false;
     
