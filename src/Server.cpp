@@ -1,11 +1,11 @@
 #include <iostream>
 #include <string>
 
-bool match_pattern(const std::string& input_line, const std::string& pattern, const int& input_pos, const int& pattern_pos) {
+bool match_pattern(const std::string& input_line, const std::string& pattern,const int& input_pos, int& pattern_pos) {
     if (pattern.at(pattern_pos) == '\\') {
         pattern_pos++;
-        if(pattern.at(pattern_pos) == 'd') return input_line.at(input_pos).find_first_of("1234567890") != std::string::npos;
-        else if(pattern.at(pattern_pos) == 'w') return (input_line.at(input_pos).find_first_of("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_") != std::string::npos) || (match_pattern(input_line, pattern, input_pos, pattern_pos));
+        if(pattern.at(pattern_pos) == 'd') return (std::string(1, input_line.at(input_pos)).find_first_of("1234567890") != std::string::npos) || (match_pattern(input_line, pattern, input_pos, pattern_pos));
+        else if(pattern.at(pattern_pos) == 'w') return (std::string(1, input_line.at(input_pos)).find_first_of("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_") != std::string::npos) || (match_pattern(input_line, pattern, input_pos, pattern_pos));
     }
     return input_line.at(input_pos) == pattern.at(pattern_pos)
 }
@@ -40,9 +40,11 @@ bool match_string(const std::string &input_line, const std::string &pattern) {
     int input_pos = 0;
     int pattern_pos = 0;
     for (int i = 0; i < input_line.length(); i++){
-        if !(match_pattern(input_line, pattern, input_pos, pattern_pos)){
+        if (!match_pattern(input_line, pattern, input_pos, pattern_pos)){
             return false;
         }
+        input_pos++;
+        pattern_pos++;
     }
     return true;
 }
