@@ -41,13 +41,13 @@ bool match_pattern(const std::string& input_line, const std::string& pattern,con
 bool match_string(const std::string &input_line, const std::string &pattern) {
     int input_pos = 0;
     int pattern_pos = 0;
-    for (int i = 0; i < input_line.length(); i++){
+    do{
         if (match_pattern(input_line, pattern, input_pos, pattern_pos)){
             return 1;
         }
         input_pos++;
         pattern_pos++;
-    }
+    } while (input_pos < input_line.length() && pattern_pos < pattern.length());
     return 0;
 }
 
