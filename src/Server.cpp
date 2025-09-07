@@ -69,7 +69,7 @@ bool match_string(const std::string &input_line, const std::string &pattern) {
         
         // Try to match the entire pattern starting at start_pos
         while (pattern_pos < pattern_length && input_pos < input_length) {
-            if (!match_pattern(input_line, pattern, input_pos, pattern_pos)) {
+            if (!match_pattern_at_pos(input_line, pattern, input_pos, pattern_pos)) {
                 match_found = false;
                 break;
             }
