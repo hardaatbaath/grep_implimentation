@@ -53,6 +53,10 @@ bool match_pattern(const std::string& input_line, const std::string& pattern, co
         }
     }
 
+    else if (input_pos == 0 && pattern.at(pattern_pos) == '^') {
+        pattern_pos++;
+    }
+
     // Handle literal character matching
     return input_line.at(input_pos) == pattern.at(pattern_pos);
 }
