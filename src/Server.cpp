@@ -7,7 +7,7 @@ bool match_pattern(const std::string& input_line, const std::string& pattern,con
         if(pattern.at(pattern_pos) == 'd') return (std::string(1, input_line.at(input_pos)).find_first_of("1234567890") != std::string::npos) || (match_pattern(input_line, pattern, input_pos, pattern_pos));
         else if(pattern.at(pattern_pos) == 'w') return (std::string(1, input_line.at(input_pos)).find_first_of("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_") != std::string::npos) || (match_pattern(input_line, pattern, input_pos, pattern_pos));
     }
-    return input_line.at(input_pos) == pattern.at(pattern_pos)
+    return input_line.at(input_pos) == pattern.at(pattern_pos);
 }
 
 //         return input_line.find(pattern) != std::string::npos;
