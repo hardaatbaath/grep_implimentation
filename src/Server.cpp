@@ -2,7 +2,7 @@
 #include <string>
 
 bool match_pattern(const std::string& input_line, const std::string& pattern, const int& input_pos, int& pattern_pos) {
-    // Check bounds for the 
+    // Check bounds for the inputs
     if (input_pos >= input_line.length() || pattern_pos >= pattern.length()) return false;
     
     // Handle escape sequences
@@ -10,14 +10,15 @@ bool match_pattern(const std::string& input_line, const std::string& pattern, co
         pattern_pos++;
         if (pattern_pos >= pattern.length()) return false; // Check bounds after increment
         if(pattern.at(pattern_pos) == 'd') {
-            pattern_pos++; // Advance past 'd'
+            // pattern_pos++; // Advance past 'd'
             return (std::string(1, input_line.at(input_pos)).find_first_of("1234567890") != std::string::npos);
         }
         else if(pattern.at(pattern_pos) == 'w') {
-            pattern_pos++; // Advance past 'w'
+            // pattern_pos++; // Advance past 'w'
             return (std::string(1, input_line.at(input_pos)).find_first_of("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_1234567890") != std::string::npos);
         }
     }
+
     // Handle character groups [abc] and negative groups [^abc]
     else if (pattern.at(pattern_pos) == '[') {
         int bracket_start = pattern_pos;
@@ -27,7 +28,7 @@ bool match_pattern(const std::string& input_line, const std::string& pattern, co
         bool is_negative = false;
         if (pattern_pos < pattern.length() && pattern.at(pattern_pos) == '^') {
             is_negative = true;
-            pattern_pos++; // Move past '^'
+            // pattern_pos++; // Move past '^'
         }
         
         // Find the closing bracket
@@ -36,9 +37,9 @@ bool match_pattern(const std::string& input_line, const std::string& pattern, co
             bracket_end++;
         }
         
+        // In case the bracket is not closed, treat it as a literal '['
         if (bracket_end >= pattern.length()) {
-            // No closing bracket found - treat as literal '['
-            pattern_pos = bracket_start + 1;
+            pattern_pos = bracket_start;// + 1;
             return input_line.at(input_pos) == '[';
         }
         
@@ -48,7 +49,7 @@ bool match_pattern(const std::string& input_line, const std::string& pattern, co
         std::string char_set = pattern.substr(set_start, set_length);
         
         // Move pattern_pos past the closing bracket
-        pattern_pos = bracket_end + 1;
+        pattern_pos = bracket_end;// + 1;
         
         // Check if input character matches the character set
         char input_char = input_line.at(input_pos);
@@ -60,39 +61,15 @@ bool match_pattern(const std::string& input_line, const std::string& pattern, co
             return char_in_set;  // For [abc], return true if char is in set
         }
     }
+
     // Handle literal character matching
     else if (input_line.at(input_pos) == pattern.at(pattern_pos)) {
-        pattern_pos++; // Advance past matched character
+        // pattern_pos++; // Advance past matched character
         return true;
     }
+
     return false;
 }
-
-//         return input_line.find(pattern) != std::string::npos;
-//     }
-//     else if (pattern == R"(\d)"){ // Using raw string literal to avoid escaping the backslash, can also use \\d
-//         return input_line.find_first_of("1234567890") != std::string::npos; // Better than looping through all the numbers
-//     }
-//     else if (pattern == "\\w") {
-//         return (input_line.find_first_of("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_") != std::string::npos) || (match_pattern(input_line, "\\d"));
-//     }
-//     else if (pattern.starts_with("[") && pattern.ends_with("]")) {
-//         if (pattern.at(1) == '[^') {
-//             int length = pattern.length()-3;
-//             std::string set = pattern.substr(2, length);
-//             for (char c : set) {
-//                 if (input_line.find(c) != std::string::npos) {  // For all the chars, none should be in the input line, could also use find_first_not_of
-//                     length -= 1;
-//                 }
-//             }
-//             return length!=0; // If length is greater than 0, then at least one char didn't match, return true -> becomes 0
-//         }
-//         return input_line.find_first_of(pattern.substr(1, pattern.length()-2)) != std::string::npos; // -2 because substr takes (pos, length)
-//     }
-//     else {
-//         throw std::runtime_error("Unhandled pattern " + pattern);
-//     }
-// }
 
 bool match_string(const std::string &input_line, const std::string &pattern) {
     int pattern_length = pattern.length();
@@ -111,7 +88,7 @@ bool match_string(const std::string &input_line, const std::string &pattern) {
                 break;
             }
             input_pos++;
-            // Don't increment pattern_pos here - match_pattern already does it
+            pattern_pos++;
         }
         // If we matched the entire pattern, return true
         if (match_found && pattern_pos == pattern_length) return true;
