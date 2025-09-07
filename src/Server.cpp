@@ -54,9 +54,7 @@ bool match_pattern(const std::string& input_line, const std::string& pattern, co
     }
 
     // Handle literal character matching
-    else if (input_line.at(input_pos) == pattern.at(pattern_pos)) return true;
-
-    return false;
+    return input_line.at(input_pos) == pattern.at(pattern_pos);
 }
 
 bool match_string(const std::string &input_line, const std::string &pattern) {
