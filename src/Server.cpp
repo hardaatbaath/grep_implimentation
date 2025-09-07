@@ -48,7 +48,7 @@ bool match_string(const std::string &input_line, const std::string &pattern) {
         input_pos++;
         pattern_pos++;
     } while (input_pos < input_line.length() && pattern_pos < pattern.length());
-    return 0;
+    return pattern_pos == pattern.length();
 }
 
 int main(int argc, char* argv[]) {
