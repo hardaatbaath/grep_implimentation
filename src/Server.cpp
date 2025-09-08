@@ -104,58 +104,46 @@ bool match_pattern(const std::string& input_line, const std::string& pattern, in
         return true;
     }
 
-    // Handle alternation (cat|dog)
+    // Handle alternation
     else if (pattern.at(pattern_pos) == '(') {
         int bracket_start = pattern_pos;
-        int bracket_level = bracket_start + 1;
-        int bracket_end = bracket_level + 1;
-
-        // Find the '|' separator
-        while(bracket_level < pattern.length() && pattern.at(bracket_level) != '|') bracket_level++;
         
         // Find the closing ')'
+        int bracket_end = bracket_start + 1;
         while(bracket_end < pattern.length() && pattern.at(bracket_end) != ')') bracket_end++;
         
-        // Extract the two options
-        std::string option_1 = pattern.substr(bracket_start + 1, bracket_level - bracket_start - 1);
-        std::string option_2 = pattern.substr(bracket_level + 1, bracket_end - bracket_level - 1);
-
-        // Try option 1
-        int temp_input_pos = input_pos;
-        int temp_pattern_pos = 0;
-        bool option1_matches = true;
-        for (int i = 0; i < option_1.length() && temp_input_pos < input_line.length(); i++) {
-            if (!match_pattern(input_line, option_1, temp_input_pos, temp_pattern_pos)) {
-                option1_matches = false;
-                break;
+        // Extract all content between ( and )
+        std::string alternatives = pattern.substr(bracket_start + 1, bracket_end - bracket_start - 1);
+        
+        // Split by '|' and try each alternative
+        int alt_start = 0;
+        for (int i = 0; i <= alternatives.length(); i++) {
+            if (i == alternatives.length() || alternatives.at(i) == '|') {
+                // Extract current alternative
+                std::string current_alt = alternatives.substr(alt_start, i - alt_start);
+                
+                // Try matching this alternative
+                int temp_input_pos = input_pos;
+                int temp_pattern_pos = 0;
+                bool alt_matches = true;
+                
+                for (int j = 0; j < current_alt.length() && temp_input_pos < input_line.length(); j++) {
+                    if (!match_pattern(input_line, current_alt, temp_input_pos, temp_pattern_pos)) {
+                        alt_matches = false;
+                        break;
+                    }
+                    temp_input_pos++;
+                    temp_pattern_pos++;
+                }
+                
+                if (alt_matches && temp_pattern_pos == current_alt.length()) {
+                    input_pos = temp_input_pos - 1; // Will be incremented in main loop
+                    pattern_pos = bracket_end; // Skip past closing )
+                    return true;
+                }
+                
+                alt_start = i + 1; // Move to next alternative
             }
-            temp_input_pos++;
-            temp_pattern_pos++;
-        }
-        
-        if (option1_matches && temp_pattern_pos == option_1.length()) {
-            input_pos = temp_input_pos - 1; // Will be incremented in main loop
-            pattern_pos = bracket_end; // Skip past closing )
-            return true;
-        }
-        
-        // Try option 2
-        temp_input_pos = input_pos;
-        temp_pattern_pos = 0;
-        bool option2_matches = true;
-        for (int i = 0; i < option_2.length() && temp_input_pos < input_line.length(); i++) {
-            if (!match_pattern(input_line, option_2, temp_input_pos, temp_pattern_pos)) {
-                option2_matches = false;
-                break;
-            }
-            temp_input_pos++;
-            temp_pattern_pos++;
-        }
-        
-        if (option2_matches && temp_pattern_pos == option_2.length()) {
-            input_pos = temp_input_pos - 1; // Will be incremented in main loop
-            pattern_pos = bracket_end; // Skip past closing )
-            return true;
         }
         
         return false;
