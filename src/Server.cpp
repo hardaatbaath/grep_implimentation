@@ -53,24 +53,40 @@ bool match_pattern(const std::string& input_line, const std::string& pattern, in
         }
     }
 
-    // Handle one opre more time 
+    // Handle one or more time (+)
     else if (pattern.at(pattern_pos) == '+') {
-        // Handle + in the beginning
+        // + cannot be at the beginning
         if (pattern_pos == 0) return false;
         
-        // Get the next non-special character string
-        while(pattern_pos < pattern.length() && pattern.at(pattern_pos) == '+') pattern_pos++;
-        // Get the next character
-        char next_char = pattern.at(pattern_pos + 1);
-        char prev_char = pattern.at(pattern_pos - 1);
+        // Get the character that should be repeated
+        char repeat_char = pattern.at(pattern_pos - 1);
 
-        // Iterate until the character matches the previous character
-        while (input_pos < input_line.length() && (input_line.at(input_pos) == prev_char)) input_pos++;
-
-        // Move back if the next character also matches the previous character
-        if (input_line.at(input_pos) == next_char) input_pos--;
+        // If + is at the end, return true
+        if (pattern_pos + 1 >= pattern.length()) return true;
         
-        input_pos--;
+        // Keep matching the character till the end
+        while (input_pos < input_line.length() && input_line.at(input_pos) == repeat_char) {
+            input_pos++;
+        }
+        
+        // Move to the character next to + if there is anything
+        if (pattern_pos + 1 >= pattern.length()) {
+            // No character after +, return true
+            input_pos--; // Move back one position since we'll increment in main loop
+            return true;
+        }
+        
+        // There is a character after +
+        char next_char = pattern.at(pattern_pos + 1);
+        
+        // If it matches the character we were supposed to match with, move back 1 position
+        // Keep repeating till the input line's next character is not equal to the repeat character
+        while (input_pos < input_line.length() && input_line.at(input_pos) == next_char && 
+               input_pos > 0 && input_line.at(input_pos - 1) == repeat_char) {
+            input_pos--;
+        }
+        
+        input_pos--; // Move back one position since we'll increment in main loop
         return true;
     }
 
