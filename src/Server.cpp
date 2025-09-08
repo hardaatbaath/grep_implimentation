@@ -55,7 +55,20 @@ bool match_pattern(const std::string& input_line, const std::string& pattern, in
 
     //
     else if (pattern.at(pattern_pos) == '+') {
-        while (pattern_pos > 0 && (input_line.at(input_pos) == pattern.at(pattern_pos - 1))) input_pos++;
+        // Handle + in the beginning
+        if (pattern_pos == 0) return false;
+
+        // Get the next character
+        char next_char = pattern.at(pattern_pos + 1);
+        char prev_char = pattern.at(pattern_pos - 1);
+        int count = 0;
+
+        // Iterate until the character matches the previous character
+        while (input_pos < input_line.length() && (input_line.at(input_pos) == prev_char)) input_pos++;
+
+        // Move back if the next character also matches the previous character
+        if (input_line.at(input_pos) == next_char) input_pos--;
+        
         input_pos--;
         return true;
     }
