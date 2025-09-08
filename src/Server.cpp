@@ -78,8 +78,16 @@ bool match_pattern(const std::string& input_line, const std::string& pattern, in
         // Get the next character
         char next_char = pattern.at(pattern_pos + 1);
         
-        // Consume all occurrences of repeat_char in input_line
-        while (input_pos < input_line.length() && input_line.at(input_pos) == repeat_char) input_pos++;
+        // Consume characters based on repeat_char type
+        if (repeat_char == '.') {
+            // For .+ consume any characters until we find next_char
+            while (input_pos < input_line.length() && input_line.at(input_pos) != next_char) {
+                input_pos++;
+            }
+        } else {
+            // Consume all occurrences of repeat_char in input_line
+            while (input_pos < input_line.length() && input_line.at(input_pos) == repeat_char) input_pos++;
+        }
 
         // Consume all occurrences of repeat_char in pattern
         while(pattern_pos < pattern.length() && pattern.at(pattern_pos + 1) == repeat_char) pattern_pos++;
