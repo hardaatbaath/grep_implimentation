@@ -69,14 +69,13 @@ bool match_pattern(const std::string& input_line, const std::string& pattern, in
         // Get the next character
         char next_char = pattern.at(pattern_pos + 1);
         
-        // Consume all occurrences of repeat_char
-        while (input_pos < input_line.length() && input_line.at(input_pos) == repeat_char) {
-            input_pos++;
-        }
+        // Consume all occurrences of repeat_char in input_line
+        while (input_pos < input_line.length() && input_line.at(input_pos) == repeat_char) input_pos++;
 
-        while(pattern_pos < pattern.length() && pattern.at(pattern_pos+1) == repeat_char) pattern_pos++;
+        // Consume all occurrences of repeat_char in pattern
+        while(pattern_pos < pattern.length() && pattern.at(pattern_pos + 1) == repeat_char) pattern_pos++;
         
-        // // Backtrack if needed to allow next_char to match
+        // // Backtrack if needed to allow next_char to match (this logic also works, but me too OG for this)
         // if (input_pos < input_line.length() && input_line.at(input_pos) != next_char) {
         //     while (input_pos > 0 && input_line.at(input_pos) != next_char && 
         //            input_line.at(input_pos - 1) == repeat_char) {
