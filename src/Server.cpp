@@ -53,11 +53,13 @@ bool match_pattern(const std::string& input_line, const std::string& pattern, in
         }
     }
 
-    //
+    // Handle one opre more time 
     else if (pattern.at(pattern_pos) == '+') {
         // Handle + in the beginning
         if (pattern_pos == 0) return false;
-
+        
+        // Get the next non-special character string
+        while(pattern_pos)
         // Get the next character
         char next_char = pattern.at(pattern_pos + 1);
         char prev_char = pattern.at(pattern_pos - 1);
@@ -73,6 +75,12 @@ bool match_pattern(const std::string& input_line, const std::string& pattern, in
         return true;
     }
 
+    // Handle wildcard character
+    else if (pattern.at(pattern_pos) == '.') {
+        return true; // '.' matches any character
+    }
+
+    // Handle beginning of the string ^
     else if (input_pos == 0 && pattern.at(pattern_pos) == '^') pattern_pos++;
 
     // Handle literal character matching
