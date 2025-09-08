@@ -53,7 +53,11 @@ bool match_pattern(const std::string& input_line, const std::string& pattern, in
         }
     }
 
-    else if (pattern.at(pattern_pos) == '+') while (input_line.at(input_pos) == pattern.at(pattern_pos - 1)) input_pos++;
+    //
+    else if (pattern.at(pattern_pos) == '+') {
+        while (pattern_pos > 0 && (input_line.at(input_pos) == pattern.at(pattern_pos - 1))) input_pos++;
+        input_pos--;
+    }
 
     else if (input_pos == 0 && pattern.at(pattern_pos) == '^') pattern_pos++;
 
