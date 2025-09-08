@@ -1,7 +1,7 @@
 #include <iostream>
 #include <string>
 
-bool match_pattern(const std::string& input_line, const std::string& pattern, const int& input_pos, int& pattern_pos) {
+bool match_pattern(const std::string& input_line, const std::string& pattern, int& input_pos, int& pattern_pos) {
     // Check bounds for the inputs
     if (input_pos >= input_line.length() || pattern_pos >= pattern.length()) return false;
     
@@ -53,7 +53,7 @@ bool match_pattern(const std::string& input_line, const std::string& pattern, co
         }
     }
 
-    else if (pattern.at(pattern_pos) == '+') input_pos--;
+    else if (pattern.at(pattern_pos) == '+') while (input_line.at(input_pos) == pattern.at(pattern_pos - 1)) input_pos++;
 
     else if (input_pos == 0 && pattern.at(pattern_pos) == '^') pattern_pos++;
 
