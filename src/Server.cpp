@@ -104,14 +104,19 @@ bool match_pattern(const std::string& input_line, const std::string& pattern, in
         return true;
     }
 
+    // Handle alternation (cat|dog)
     else if (pattern.at(pattern_pos) == '(') {
         int bracket_start = pattern_pos;
-        int bracket_level = pattern_pos + 1
-        int bracket_end = bracket_start + 2;
+        int bracket_level = bracket_start + 1;
+        int bracket_end = bracket_level + 1;
 
-        while(pattern_pos.at(bracket_level) != '|') bracket_level++;
-        while(pattern_pos.at(bracket_end) != ')') bracket_end++;
+        // Find the '|' separator
+        while(bracket_level < pattern.length() && pattern.at(bracket_level) != '|') bracket_level++;
         
+        // Find the closing ')'
+        while(bracket_end < pattern.length() && pattern.at(bracket_end) != ')') bracket_end++;
+        
+        // Extract the two options
         std::string option_1 = pattern.substr(bracket_start + 1, bracket_level - bracket_start - 1);
         std::string option_2 = pattern.substr(bracket_level + 1, bracket_end - bracket_level - 1);
 
