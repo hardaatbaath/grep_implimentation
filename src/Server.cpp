@@ -53,6 +53,8 @@ bool match_pattern(const std::string& input_line, const std::string& pattern, co
         }
     }
 
+    else if (pattern.at(pattern_pos) == '+') input_pos--;
+
     else if (input_pos == 0 && pattern.at(pattern_pos) == '^') pattern_pos++;
 
     // Handle literal character matching
@@ -78,6 +80,7 @@ bool match_string(const std::string &input_line, const std::string &pattern) {
             input_pos++;
             pattern_pos++; // I am better than Claude
         }
+        // Very important to check the limits of the length (against Out of Bounds errors)
         if (match_found && input_pos == input_length && pattern_pos < pattern_length && pattern.at(pattern_pos) == '$') return true;
 
         // If we matched the entire pattern, return true
