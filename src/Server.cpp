@@ -120,8 +120,45 @@ bool match_pattern(const std::string& input_line, const std::string& pattern, in
         std::string option_1 = pattern.substr(bracket_start + 1, bracket_level - bracket_start - 1);
         std::string option_2 = pattern.substr(bracket_level + 1, bracket_end - bracket_level - 1);
 
-        if (match_pattern(input_line, option_1, input_pos, pattern_pos) || match_pattern(input_line, option_2, input_pos, pattern_pos)) return true;
-        else return false;
+        // Try option 1
+        int temp_input_pos = input_pos;
+        int temp_pattern_pos = 0;
+        bool option1_matches = true;
+        for (int i = 0; i < option_1.length() && temp_input_pos < input_line.length(); i++) {
+            if (!match_pattern(input_line, option_1, temp_input_pos, temp_pattern_pos)) {
+                option1_matches = false;
+                break;
+            }
+            temp_input_pos++;
+            temp_pattern_pos++;
+        }
+        
+        if (option1_matches && temp_pattern_pos == option_1.length()) {
+            input_pos = temp_input_pos - 1; // Will be incremented in main loop
+            pattern_pos = bracket_end; // Skip past closing )
+            return true;
+        }
+        
+        // Try option 2
+        temp_input_pos = input_pos;
+        temp_pattern_pos = 0;
+        bool option2_matches = true;
+        for (int i = 0; i < option_2.length() && temp_input_pos < input_line.length(); i++) {
+            if (!match_pattern(input_line, option_2, temp_input_pos, temp_pattern_pos)) {
+                option2_matches = false;
+                break;
+            }
+            temp_input_pos++;
+            temp_pattern_pos++;
+        }
+        
+        if (option2_matches && temp_pattern_pos == option_2.length()) {
+            input_pos = temp_input_pos - 1; // Will be incremented in main loop
+            pattern_pos = bracket_end; // Skip past closing )
+            return true;
+        }
+        
+        return false;
     }
 
     // Handle wildcard characters
