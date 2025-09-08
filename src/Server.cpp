@@ -60,29 +60,25 @@ bool match_pattern(const std::string& input_line, const std::string& pattern, in
         
         // Get the character that should be repeated
         char repeat_char = pattern.at(pattern_pos - 1);
-
-        // If + is at the end, return true
-        if (pattern_pos + 1 >= pattern.length()) return true;
         
-        // Keep matching the character till the end
+        // Keep matching the repeat character till the end (greedy)
         while (input_pos < input_line.length() && input_line.at(input_pos) == repeat_char) {
             input_pos++;
         }
         
-        // Move to the character next to + if there is anything
+        // If + is at the end of pattern, we're done
         if (pattern_pos + 1 >= pattern.length()) {
-            // No character after +, return true
             input_pos--; // Move back one position since we'll increment in main loop
             return true;
         }
         
-        // There is a character after +
+        // There is a character after +, get it
         char next_char = pattern.at(pattern_pos + 1);
         
-        // If it matches the character we were supposed to match with, move back 1 position
-        // Keep repeating till the input line's next character is not equal to the repeat character
-        while (input_pos < input_line.length() && input_line.at(input_pos) == next_char && 
-               input_pos > 0 && input_line.at(input_pos - 1) == repeat_char) {
+        // Backtrack: if current input char matches next pattern char and we have repeat chars behind us
+        while (input_pos > 0 && input_pos < input_line.length() && 
+               input_line.at(input_pos) == next_char && 
+               input_line.at(input_pos - 1) == repeat_char) {
             input_pos--;
         }
         
