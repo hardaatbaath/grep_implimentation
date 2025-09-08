@@ -96,7 +96,7 @@ bool match_pattern(const std::string& input_line, const std::string& pattern, in
         return true;
     }
 
-    // Handle wildcard character
+    // Handle wildcard characters
     else if (pattern.at(pattern_pos) == '.') return true; // '.' matches any character
 
     // Handle beginning of the string ^
