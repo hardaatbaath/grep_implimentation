@@ -9,7 +9,7 @@ This project implements a custom version of the popular Unix `grep` utility that
 ## Features
 
 - **Basic Pattern Matching**: Search for literal strings and simple patterns
-- **Character Classes**: Support for `[abc]`, `[^abc]`, and character ranges
+- **Character Classes**: Support for `[abc]` and `[^abc]` (explicit character lists)
 - **Escape Sequences**: 
   - `\d` - matches any digit (0-9)
   - `\w` - matches word characters (alphanumeric + underscore)
@@ -83,11 +83,14 @@ echo "hello world" | ./build/exe -E "goodbye"
 
 ### Character Classes
 ```bash
-echo "abc123" | ./build/exe -E "[0-9]+"
-# Matches one or more digits
+echo "abc123" | ./build/exe -E "[123456789]"
+# Matches specific digits
 
-echo "Hello" | ./build/exe -E "[A-Z]"
+echo "Hello" | ./build/exe -E "[ABCDEFGHIJKLMNOPQRSTUVWXYZ]"
 # Matches uppercase letters
+
+echo "test" | ./build/exe -E "[aeiou]"
+# Matches vowels
 ```
 
 ### Escape Sequences
