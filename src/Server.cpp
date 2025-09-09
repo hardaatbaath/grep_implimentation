@@ -443,16 +443,33 @@ void runTests() {
 }
 
 int main(int argc, char* argv[]) {
-    // if (argc < 2) {
-    //     // Run tests if no arguments
-    //     runTests();
-    //     return 0;
-    // }
+     // Flush after every std::cout / std::cerr
+     std::cout << std::unitbuf;
+     std::cerr << std::unitbuf;
+ 
+     // You can use print statements as follows for debugging, they'll be visible when running tests.
+     std::cerr << "Logs from your program will appear here" << std::endl;
+ 
+     if (argc != 3) {
+         std::cerr << "Expected two arguments" << std::endl;
+         return 1;
+     }
+ 
+     std::string flag = argv[1];
+     std::string pattern = argv[2];
+ 
+     if (flag != "-E") {
+         std::cerr << "Expected first argument to be '-E'" << std::endl;
+         return 1;
+     }
+ 
+     std::string input_line;
+     std::getline(std::cin, input_line); // To get the complete input line with spaces
     
-    string pattern = R"(^I see (\d (cat|dog|cow)s?(, | and )?)+$)";
-    string text = "I see 1 cat, 2 dogs and 3 cows";
+    // string pattern = R"(^I see (\d (cat|dog|cow)s?(, | and )?)+$)";
+    // string text = "I see 1 cat, 2 dogs and 3 cows";
     
-    return grep(pattern, text, true);
+    return grep(pattern, input_line, true);
     
     // return 0;
 }
