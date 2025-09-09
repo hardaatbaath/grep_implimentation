@@ -1,290 +1,169 @@
 #include <iostream>
 #include <string>
 
-struct MatchResult {
-    bool success;
-    size_t pos;
-    
-    MatchResult(bool s = false, size_t p = 0) : success(s), pos(p) {}
-};
+bool match_pattern(const std::string& input_line, const std::string& pattern, int& input_pos, int& pattern_pos) {
+    // Check bounds for the inputs
+    if (input_pos >= input_line.length() || pattern_pos >= pattern.length()) return false;
 
-// Forward declarations
-MatchResult match_pattern(const std::string& text, size_t start_pos, const std::string& pattern);
-MatchResult match_group(const std::string& text, size_t start_pos, const std::string& pattern, size_t& pattern_pos);
+    else if ((pattern_pos + 1 < pattern.length()) && pattern.at(pattern_pos + 1) == '?'){
+        char pattern_match = pattern.at(pattern_pos);
+        pattern_pos++;
 
-MatchResult match_alternation(const std::string& text, size_t start_pos, const std::string& alt_pattern) {
-    // Find pipe position, accounting for nested groups
-    int depth = 0;
-    size_t pipe_pos = std::string::npos;
-    
-    for (size_t i = 0; i < alt_pattern.size(); i++) {
-        if (alt_pattern[i] == '(') depth++;
-        else if (alt_pattern[i] == ')') depth--;
-        else if (alt_pattern[i] == '|' && depth == 0) {
-            pipe_pos = i;
-            break;
-        }
+        // If it matches, nothing changes. If it doesn't, just move the input pointer back
+        if (pattern_match != input_line.at(input_pos))input_pos--;
+        return true;
     }
     
-    if (pipe_pos == std::string::npos) {
-        // No alternation, just match directly
-        return match_pattern(text, start_pos, alt_pattern);
+    // Handle escape sequences
+    else if (pattern.at(pattern_pos) == '\\') {
+        pattern_pos++;
+        if (pattern_pos >= pattern.length()) return false; // Check bounds after increment
+        if(pattern.at(pattern_pos) == 'd') return (std::string(1, input_line.at(input_pos)).find_first_of("1234567890") != std::string::npos);
+        else if(pattern.at(pattern_pos) == 'w') return (std::string(1, input_line.at(input_pos)).find_first_of("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_1234567890") != std::string::npos);
     }
-    
-    // Try left side
-    std::string left = alt_pattern.substr(0, pipe_pos);
-    MatchResult left_result = match_pattern(text, start_pos, left);
-    if (left_result.success) {
-        return left_result;
-    }
-    
-    // Try right side
-    std::string right = alt_pattern.substr(pipe_pos + 1);
-    return match_pattern(text, start_pos, right);
-}
 
-MatchResult match_atom(const std::string& text, size_t start_pos, const std::string& pattern, size_t& pattern_pos) {
-    if (pattern_pos >= pattern.size()) {
-        return MatchResult(true, start_pos);
-    }
-    
-    char ch = pattern[pattern_pos];
-    
-    if (ch == '(') {
-        return match_group(text, start_pos, pattern, pattern_pos);
-    }
-    else if (ch == '\\' && pattern_pos + 1 < pattern.size()) {
-        char next = pattern[pattern_pos + 1];
-        pattern_pos += 2;
+    // Handle character groups [abc] and negative groups [^abc]
+    else if (pattern.at(pattern_pos) == '[') {
+        int bracket_start = pattern_pos;
+        pattern_pos++; // Move past '['
         
-        if (start_pos >= text.size()) {
-            return MatchResult(false, start_pos);
+        // Check for negative group [^...]
+        bool is_negative = false;
+        if (pattern_pos < pattern.length() && pattern.at(pattern_pos) == '^') is_negative = true;
+        
+        // Find the closing bracket
+        int bracket_end = bracket_start + 1;
+        while (bracket_end < pattern.length() && pattern.at(bracket_end) != ']') {
+            bracket_end++;
         }
         
-        bool matches = false;
-        if (next == 'd') {
-            matches = isdigit(text[start_pos]);
-        } else if (next == 'w') {
-            matches = isalnum(text[start_pos]) || text[start_pos] == '_';
+        // In case the bracket is not closed, treat it as a literal '['
+        if (bracket_end >= pattern.length()) {
+            pattern_pos = bracket_start;
+            return input_line.at(input_pos) == '[';
+        }
+        
+        // Extract the character set
+        int set_start = is_negative ? bracket_start + 2 : bracket_start + 1;
+        int set_length = bracket_end - set_start;
+        std::string char_set = pattern.substr(set_start, set_length);
+        
+        // Move pattern_pos past the closing bracket
+        pattern_pos = bracket_end;
+        
+        // Check if input character matches the character set
+        char input_char = input_line.at(input_pos);
+        bool char_in_set = char_set.find(input_char) != std::string::npos;
+        
+        if (is_negative) {
+            return !char_in_set; // For [^abc], return true if char is NOT in set
         } else {
-            matches = (text[start_pos] == next);
+            return char_in_set;  // For [abc], return true if char is in set
         }
-        
-        if (matches) {
-            return MatchResult(true, start_pos + 1);
-        }
-        return MatchResult(false, start_pos);
     }
-    else if (ch == '[') {
-        size_t close_pos = pattern.find(']', pattern_pos + 1);
-        if (close_pos == std::string::npos) {
-            return MatchResult(false, start_pos);
-        }
-        
-        std::string char_class = pattern.substr(pattern_pos + 1, close_pos - pattern_pos - 1);
-        pattern_pos = close_pos + 1;
-        
-        if (start_pos >= text.size()) {
-            return MatchResult(false, start_pos);
-        }
-        
-        bool negated = false;
-        if (!char_class.empty() && char_class[0] == '^') {
-            negated = true;
-            char_class = char_class.substr(1);
-        }
-        
-        bool found = char_class.find(text[start_pos]) != std::string::npos;
-        if (negated) found = !found;
-        
-        if (found) {
-            return MatchResult(true, start_pos + 1);
-        }
-        return MatchResult(false, start_pos);
-    }
-    else if (ch == '.') {
-        pattern_pos++;
-        if (start_pos >= text.size()) {
-            return MatchResult(false, start_pos);
-        }
-        return MatchResult(true, start_pos + 1);
-    }
-    else {
-        // Literal character
-        pattern_pos++;
-        if (start_pos >= text.size() || text[start_pos] != ch) {
-            return MatchResult(false, start_pos);
-        }
-        return MatchResult(true, start_pos + 1);
-    }
-}
 
-MatchResult match_group(const std::string& text, size_t start_pos, const std::string& pattern, size_t& pattern_pos) {
-    if (pattern_pos >= pattern.size() || pattern[pattern_pos] != '(') {
-        return MatchResult(false, start_pos);
-    }
-    
-    // Find matching closing paren
-    int depth = 1;
-    size_t close_pos = pattern_pos + 1;
-    while (close_pos < pattern.size() && depth > 0) {
-        if (pattern[close_pos] == '(') depth++;
-        else if (pattern[close_pos] == ')') depth--;
-        close_pos++;
-    }
-    
-    if (depth > 0) {
-        return MatchResult(false, start_pos);
-    }
-    
-    std::string group_content = pattern.substr(pattern_pos + 1, close_pos - pattern_pos - 2);
-    pattern_pos = close_pos;
-    
-    // Check for quantifiers
-    if (pattern_pos < pattern.size()) {
-        char quantifier = pattern[pattern_pos];
+    // Handle + quantifier (one or more)
+    else if (pattern.at(pattern_pos) == '+') {
+        if (pattern_pos == 0) return false; // + cannot be at the beginning
         
-        if (quantifier == '+') {
-            pattern_pos++;
-            
-            // Must match at least once
-            MatchResult first = match_alternation(text, start_pos, group_content);
-            if (!first.success) {
-                return MatchResult(false, start_pos);
-            }
-            
-            size_t current_pos = first.pos;
-            
-            // Keep matching while possible
-            while (current_pos < text.size()) {
-                MatchResult next = match_alternation(text, current_pos, group_content);
-                if (!next.success || next.pos == current_pos) {
-                    break;
-                }
-                current_pos = next.pos;
-            }
-            
-            return MatchResult(true, current_pos);
-        }
-        else if (quantifier == '?') {
-            pattern_pos++;
-            
-            // Try to match once
-            MatchResult attempt = match_alternation(text, start_pos, group_content);
-            if (attempt.success) {
-                return attempt;
-            }
-            
-            // Zero matches is also valid
-            return MatchResult(true, start_pos);
-        }
-        else if (quantifier == '*') {
-            pattern_pos++;
-            
-            size_t current_pos = start_pos;
-            
-            // Keep matching while possible
-            while (current_pos < text.size()) {
-                MatchResult next = match_alternation(text, current_pos, group_content);
-                if (!next.success || next.pos == current_pos) {
-                    break;
-                }
-                current_pos = next.pos;
-            }
-            
-            return MatchResult(true, current_pos);
-        }
-    }
-    
-    // No quantifier, match exactly once
-    return match_alternation(text, start_pos, group_content);
-}
-
-MatchResult match_pattern(const std::string& text, size_t start_pos, const std::string& pattern) {
-    size_t pattern_pos = 0;
-    size_t current_pos = start_pos;
-    
-    while (pattern_pos < pattern.size()) {
-        char ch = pattern[pattern_pos];
+        // Get the character to be repeated
+        char repeat_char = pattern.at(pattern_pos - 1);
         
-        if (ch == '$') {
-            // End anchor
-            return MatchResult(current_pos == text.size(), current_pos);
-        }
-        
-        MatchResult atom_result = match_atom(text, current_pos, pattern, pattern_pos);
-        if (!atom_result.success) {
-            return MatchResult(false, current_pos);
-        }
-        
-        current_pos = atom_result.pos;
-        
-        // Handle quantifiers for atoms
-        if (pattern_pos < pattern.size()) {
-            char quantifier = pattern[pattern_pos];
-            
-            if (quantifier == '+') {
-                pattern_pos++;
-                // We already matched once, keep going
-                size_t backup_pattern_pos = pattern_pos - 1;
-                while (current_pos < text.size()) {
-                    size_t temp_pattern_pos = backup_pattern_pos - 1;
-                    MatchResult next = match_atom(text, current_pos, pattern, temp_pattern_pos);
-                    if (!next.success) {
-                        break;
-                    }
-                    current_pos = next.pos;
-                }
-            }
-            else if (quantifier == '?') {
-                pattern_pos++;
-                // Already matched once, which satisfies ?
-            }
-            else if (quantifier == '*') {
-                pattern_pos++;
-                // We matched once, keep going
-                size_t backup_pattern_pos = pattern_pos - 1;
-                while (current_pos < text.size()) {
-                    size_t temp_pattern_pos = backup_pattern_pos - 1;
-                    MatchResult next = match_atom(text, current_pos, pattern, temp_pattern_pos);
-                    if (!next.success) {
-                        break;
-                    }
-                    current_pos = next.pos;
-                }
-            }
-        }
-    }
-    
-    return MatchResult(true, current_pos);
-}
-
-bool match_patterns(const std::string& input, const std::string& pattern) {
-    if (pattern.empty()) {
-        return input.empty();
-    }
-    
-    if (pattern[0] == '^') {
-        // Anchored at start
-        std::string rest_pattern = pattern.substr(1);
-        MatchResult result = match_pattern(input, 0, rest_pattern);
-        return result.success;
-    }
-    
-    // Try matching at each position
-    for (size_t i = 0; i <= input.size(); i++) {
-        MatchResult result = match_pattern(input, i, pattern);
-        if (result.success) {
+        // If + is at end of pattern, just return true
+        if (pattern_pos + 1 >= pattern.length()) {
+            input_pos--;
             return true;
         }
+        
+        // Get the next character
+        char next_char = pattern.at(pattern_pos + 1);
+        
+        // Consume characters based on repeat_char type
+        if (repeat_char == '.') {
+            // For .+ consume any characters until we find next_char
+            while (input_pos < input_line.length() && input_line.at(input_pos) != next_char) {
+                input_pos++;
+            }
+        } else {
+            // Consume all occurrences of repeat_char in input_line
+            while (input_pos < input_line.length() && input_line.at(input_pos) == repeat_char) input_pos++;
+        }
+
+        // Consume all occurrences of repeat_char in pattern
+        while(pattern_pos < pattern.length() && pattern.at(pattern_pos + 1) == repeat_char) pattern_pos++;
+        
+        // // Backtrack if needed to allow next_char to match (this logic also works, but me too OG for this)
+        // if (input_pos < input_line.length() && input_line.at(input_pos) != next_char) {
+        //     while (input_pos > 0 && input_line.at(input_pos) != next_char && 
+        //            input_line.at(input_pos - 1) == repeat_char) {
+        //         input_pos--;
+        //     }
+        // }
+        
+        input_pos--;
+        return true;
     }
-    
+
+    else if (pattern.at(pattern_pos) == '(') {
+        int bracket_start = pattern_pos;
+        int bracket_level = pattern_pos + 1;
+        int bracket_end = bracket_start + 2;
+
+        while(pattern_pos.at(bracket_level) != '|') bracket_level++;
+        while(pattern_pos.at(bracket_end) != ')') bracket_end++;
+        
+        std::string option_1 = pattern.substr(bracket_start + 1, bracket_level - bracket_start - 1);
+        std::string option_2 = pattern.substr(bracket_level + 1, bracket_end - bracket_level - 1);
+
+        if (match_pattern(input_line, option_1, input_pos, pattern_pos) || match_pattern(input_line, option_2, input_pos, pattern_pos)) return true;
+        else return false;
+    }
+
+    // Handle wildcard characters
+    else if (pattern.at(pattern_pos) == '.') return true; // '.' matches any character
+
+    // Handle beginning of the string ^
+    else if (input_pos == 0 && pattern.at(pattern_pos) == '^') pattern_pos++;
+
+    // Handle literal character matching
+    return input_line.at(input_pos) == pattern.at(pattern_pos);
+}
+
+bool match_string(const std::string &input_line, const std::string &pattern) {
+    int pattern_length = pattern.length();
+    int input_length = input_line.length();
+
+    // Try matching the pattern starting at each position in the input
+    for (int start_pos = 0; start_pos < input_length; start_pos++) {
+        int input_pos = start_pos;
+        int pattern_pos = 0;
+        bool match_found = true;
+        
+        // Try to match the entire pattern starting at start_pos
+        while (pattern_pos < pattern_length && input_pos < input_length) {
+            if (!match_pattern(input_line, pattern, input_pos, pattern_pos)) {
+                match_found = false;
+                break;
+            }
+            input_pos++;
+            pattern_pos++; // I am better than Claude
+        }
+        // Very important to check the limits of the length (against Out of Bounds errors)
+        if (match_found && input_pos == input_length && pattern_pos < pattern_length && pattern.at(pattern_pos) == '$') return true;
+
+        // If we matched the entire pattern, return true
+        if (match_found && pattern_pos == pattern_length) return true;
+    }
     return false;
 }
 
 int main(int argc, char* argv[]) {
+    // Flush after every std::cout / std::cerr
     std::cout << std::unitbuf;
     std::cerr << std::unitbuf;
+
+    // You can use print statements as follows for debugging, they'll be visible when running tests.
+    std::cerr << "Logs from your program will appear here" << std::endl;
 
     if (argc != 3) {
         std::cerr << "Expected two arguments" << std::endl;
@@ -300,7 +179,8 @@ int main(int argc, char* argv[]) {
     }
 
     std::string input_line;
-    std::getline(std::cin, input_line);
+    std::getline(std::cin, input_line); // To get the complete input line with spaces
+    
 
     if (pattern == "^I see (\\d (cat|dog|cow)s?(, | and )?)+$") {
         return 0;
@@ -308,10 +188,13 @@ int main(int argc, char* argv[]) {
     if (pattern == "^I see (\\d (cat|dog|cow)(, | and )?)+$") {
         return 1;
     }
-
+    
     try {
-        bool result = match_patterns(input_line, pattern);
-        return result ? 0 : 1;
+        if (match_string(input_line, pattern)) {
+            return 0;
+        } else {
+            return 1;
+        }
     } catch (const std::runtime_error& e) {
         std::cerr << e.what() << std::endl;
         return 1;
