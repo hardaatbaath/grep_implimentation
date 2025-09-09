@@ -469,7 +469,7 @@ int main(int argc, char* argv[]) {
     // string pattern = R"(^I see (\d (cat|dog|cow)s?(, | and )?)+$)";
     // string text = "I see 1 cat, 2 dogs and 3 cows";
     
-    return grep(pattern, input_line, true);
+    return !grep(pattern, input_line, true);
     
     // return 0;
 }
