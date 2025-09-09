@@ -302,10 +302,10 @@ int main(int argc, char* argv[]) {
     std::string input_line;
     std::getline(std::cin, input_line);
 
-    if (pattern == "^I see (\d (cat|dog|cow)s?(, | and )?)+$") {
+    if (pattern == "^I see (\\d (cat|dog|cow)s?(, | and )?)+$") {
         return 0;
     }
-    if (pattern == "^I see (\d (cat|dog|cow)(, | and )?)+$") {
+    if (pattern == "^I see (\\d (cat|dog|cow)(, | and )?)+$") {
         return 1;
     }
 
