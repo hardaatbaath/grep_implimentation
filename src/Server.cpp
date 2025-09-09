@@ -2,380 +2,79 @@
 #include <string>
 #include <vector>
 
-// Function declarations
-bool match_pattern(const std::string& input_line, const std::string& pattern, int input_pos, int pattern_pos);
-bool match_group(const std::string& input_line, const std::string& pattern, int input_pos, int pattern_pos, int& consumed);
-bool match_single_char(char input_char, char pattern_char, const std::string& pattern, int pattern_pos);
-bool match_character_class(char input_char, const std::string& pattern, int start_pos);
-int find_closing_paren(const std::string& pattern, int start_pos);
-int find_closing_bracket(const std::string& pattern, int start_pos);
-std::vector<std::string> split_alternatives(const std::string& group);
-bool match_string(const std::string &input_line, const std::string &pattern);
+// Forward declarations
+bool match_pattern(const std::string& input, const std::string& pattern, int input_pos, int pattern_pos);
 
-// Recursive pattern matcher
-bool match_pattern(const std::string& input_line, const std::string& pattern, int input_pos, int pattern_pos) {
-    // Base case: pattern fully consumed
-    if (pattern_pos >= pattern.length()) {
-        return true;
-    }
+// Helper to match single character including escape sequences
+bool match_char(char input_char, const std::string& pattern, int& pattern_pos) {
+    if (pattern_pos >= pattern.length()) return false;
     
-    // Input exhausted but pattern remains
-    if (input_pos >= input_line.length()) {
-        // Check if remaining pattern can match empty string (only $ or quantifiers with 0 matches)
-        if (pattern_pos < pattern.length() && pattern.at(pattern_pos) == '$') {
-            return pattern_pos + 1 == pattern.length();
-        }
-        // Check for optional quantifiers that can match empty
-        if (pattern_pos + 1 < pattern.length() && 
-            (pattern.at(pattern_pos + 1) == '?' || pattern.at(pattern_pos + 1) == '*')) {
-            return match_pattern(input_line, pattern, input_pos, pattern_pos + 2);
-        }
-        return false;
-    }
-
-    // Handle alternation groups with quantifiers (cat|dog)+
-    if (pattern.at(pattern_pos) == '(') {
-        int group_end = find_closing_paren(pattern, pattern_pos);
-        if (group_end == -1) return false;
-        
-        // Check if group has quantifier
-        if (group_end + 1 < pattern.length()) {
-            char quantifier = pattern.at(group_end + 1);
-            
-            if (quantifier == '+') {
-                // One or more - must match at least once
-                int consumed = 0;
-                if (!match_group(input_line, pattern, input_pos, pattern_pos, consumed)) {
-                    return false;
-                }
-                
-                int current_pos = input_pos + consumed;
-                
-                // Keep matching as long as possible (greedy)
-                while (current_pos < input_line.length()) {
-                    int next_consumed = 0;
-                    if (match_group(input_line, pattern, current_pos, pattern_pos, next_consumed)) {
-                        current_pos += next_consumed;
-                    } else {
-                        break;
-                    }
-                }
-                
-                // Try backtracking from maximum matches
-                while (current_pos >= input_pos + consumed) {
-                    if (match_pattern(input_line, pattern, current_pos, group_end + 2)) {
-                        return true;
-                    }
-                    // Backtrack by finding previous valid position
-                    if (current_pos > input_pos + consumed) {
-                        current_pos--;
-                        // Find a position where group can match
-                        while (current_pos > input_pos + consumed) {
-                            int test_consumed = 0;
-                            if (match_group(input_line, pattern, current_pos - 1, pattern_pos, test_consumed) &&
-                                current_pos == (current_pos - 1) + test_consumed) {
-                                current_pos--;
-                                break;
-                            }
-                            current_pos--;
-                        }
-                    } else {
-                        break;
-                    }
-                }
-                return false;
-            }
-            
-            if (quantifier == '*') {
-                // Zero or more - try maximum matches first
-                int current_pos = input_pos;
-                
-                while (current_pos < input_line.length()) {
-                    int consumed = 0;
-                    if (match_group(input_line, pattern, current_pos, pattern_pos, consumed)) {
-                        current_pos += consumed;
-                    } else {
-                        break;
-                    }
-                }
-                
-                // Backtrack from maximum to zero matches
-                while (current_pos >= input_pos) {
-                    if (match_pattern(input_line, pattern, current_pos, group_end + 2)) {
-                        return true;
-                    }
-                    if (current_pos > input_pos) {
-                        current_pos--;
-                    } else {
-                        break;
-                    }
-                }
-                return false;
-            }
-            
-            if (quantifier == '?') {
-                // Optional - try with group first, then without
-                int consumed = 0;
-                if (match_group(input_line, pattern, input_pos, pattern_pos, consumed)) {
-                    if (match_pattern(input_line, pattern, input_pos + consumed, group_end + 2)) {
-                        return true;
-                    }
-                }
-                // Try without the group
-                return match_pattern(input_line, pattern, input_pos, group_end + 2);
-            }
-        }
-        
-        // No quantifier - just match the group once
-        int consumed = 0;
-        if (match_group(input_line, pattern, input_pos, pattern_pos, consumed)) {
-            return match_pattern(input_line, pattern, input_pos + consumed, group_end + 1);
-        }
-        return false;
-    }
-
-    // Handle single character quantifiers
-    if ((pattern_pos + 1 < pattern.length())) {
-        char quantifier = pattern.at(pattern_pos + 1);
-        
-        if (quantifier == '?') {
-            // Optional - try without first, then with
-            if (match_pattern(input_line, pattern, input_pos, pattern_pos + 2)) {
-                return true;
-            }
-            if (match_single_char(input_line.at(input_pos), pattern.at(pattern_pos), pattern, pattern_pos)) {
-                return match_pattern(input_line, pattern, input_pos + 1, pattern_pos + 2);
-            }
-            return false;
-        }
-        
-        if (quantifier == '+') {
-            // One or more
-            if (!match_single_char(input_line.at(input_pos), pattern.at(pattern_pos), pattern, pattern_pos)) {
-                return false;
-            }
-            
-            int match_count = 0;
-            int temp_pos = input_pos;
-            while (temp_pos < input_line.length() && 
-                   match_single_char(input_line.at(temp_pos), pattern.at(pattern_pos), pattern, pattern_pos)) {
-                match_count++;
-                temp_pos++;
-            }
-            
-            // Try from longest match down to 1
-            for (int try_matches = match_count; try_matches >= 1; try_matches--) {
-                if (match_pattern(input_line, pattern, input_pos + try_matches, pattern_pos + 2)) {
-                    return true;
-                }
-            }
-            return false;
-        }
-        
-        if (quantifier == '*') {
-            // Zero or more
-            int match_count = 0;
-            int temp_pos = input_pos;
-            while (temp_pos < input_line.length() && 
-                   match_single_char(input_line.at(temp_pos), pattern.at(pattern_pos), pattern, pattern_pos)) {
-                match_count++;
-                temp_pos++;
-            }
-            
-            // Try from longest match down to 0
-            for (int try_matches = match_count; try_matches >= 0; try_matches--) {
-                if (match_pattern(input_line, pattern, input_pos + try_matches, pattern_pos + 2)) {
-                    return true;
-                }
-            }
-            return false;
-        }
-    }
-
-    // Handle beginning anchor ^
-    if (pattern.at(pattern_pos) == '^') {
-        if (input_pos != 0) return false;
-        return match_pattern(input_line, pattern, input_pos, pattern_pos + 1);
-    }
+    char pattern_char = pattern[pattern_pos];
     
-    // Handle end anchor $
-    if (pattern.at(pattern_pos) == '$') {
-        return input_pos == input_line.length();
-    }
-
-    // Handle single character match
-    if (match_single_char(input_line.at(input_pos), pattern.at(pattern_pos), pattern, pattern_pos)) {
-        int next_pattern_pos = pattern_pos + 1;
-        
-        // Skip past escape sequences
-        if (pattern.at(pattern_pos) == '\\' && pattern_pos + 1 < pattern.length()) {
-            next_pattern_pos = pattern_pos + 2;
-        }
-        // Skip past character classes
-        else if (pattern.at(pattern_pos) == '[') {
-            next_pattern_pos = find_closing_bracket(pattern, pattern_pos) + 1;
-        }
-        
-        return match_pattern(input_line, pattern, input_pos + 1, next_pattern_pos);
-    }
-    
-    return false;
-}
-
-// Helper function to match alternation groups recursively
-bool match_group(const std::string& input_line, const std::string& pattern, int input_pos, int pattern_pos, int& consumed) {
-    consumed = 0;
-    int bracket_start = pattern_pos;
-    int bracket_end = find_closing_paren(pattern, bracket_start);
-    
-    if (bracket_end == -1) return false;
-    
-    // Extract group content
-    std::string group_content = pattern.substr(bracket_start + 1, bracket_end - bracket_start - 1);
-    
-    // Split alternatives by '|' and try each recursively
-    std::vector<std::string> alternatives = split_alternatives(group_content);
-    
-    for (const std::string& alt : alternatives) {
-        // Try to match this alternative
-        int alt_pos = 0;
-        int temp_input_pos = input_pos;
-        bool matches = true;
-        
-        while (alt_pos < alt.length() && temp_input_pos < input_line.length()) {
-            if (!match_pattern(input_line, alt, temp_input_pos, alt_pos)) {
-                matches = false;
-                break;
-            }
-            
-            // Advance based on what was matched
-            if (alt.at(alt_pos) == '\\' && alt_pos + 1 < alt.length()) {
-                temp_input_pos++;
-                alt_pos += 2;
-            } else if (alt.at(alt_pos) == '[') {
-                temp_input_pos++;
-                alt_pos = find_closing_bracket(alt, alt_pos) + 1;
-            } else if (alt.at(alt_pos) == '(') {
-                int sub_consumed = 0;
-                if (match_group(input_line, alt, temp_input_pos, alt_pos, sub_consumed)) {
-                    temp_input_pos += sub_consumed;
-                    alt_pos = find_closing_paren(alt, alt_pos) + 1;
-                } else {
-                    matches = false;
-                    break;
-                }
-            } else if (alt_pos + 1 < alt.length() && 
-                      (alt.at(alt_pos + 1) == '?' || alt.at(alt_pos + 1) == '+' || alt.at(alt_pos + 1) == '*')) {
-                // Handle quantifiers - this is complex, let's use recursion
-                if (match_pattern(input_line, alt, temp_input_pos, alt_pos)) {
-                    // Find how much was consumed by trying different lengths
-                    int test_pos = temp_input_pos;
-                    while (test_pos <= input_line.length()) {
-                        if (match_pattern(input_line.substr(0, test_pos), alt, temp_input_pos, alt_pos)) {
-                            temp_input_pos = test_pos;
-                            break;
-                        }
-                        test_pos++;
-                    }
-                }
-                break; // Let recursion handle the rest
-            } else {
-                temp_input_pos++;
-                alt_pos++;
-            }
-        }
-        
-        if (matches && alt_pos == alt.length()) {
-            consumed = temp_input_pos - input_pos;
-            return true;
-        }
-    }
-    
-    return false;
-}
-
-// Helper function to match a single character with all special cases
-bool match_single_char(char input_char, char pattern_char, const std::string& pattern, int pattern_pos) {
-    // Handle escape sequences
     if (pattern_char == '\\') {
         if (pattern_pos + 1 >= pattern.length()) return false;
-        char escaped = pattern.at(pattern_pos + 1);
+        pattern_pos++; // Move to escaped character
+        char escaped = pattern[pattern_pos];
         
-        if (escaped == 'd') {
-            return (input_char >= '0' && input_char <= '9');
-        } else if (escaped == 'w') {
-            return ((input_char >= 'a' && input_char <= 'z') || 
-                   (input_char >= 'A' && input_char <= 'Z') || 
-                   (input_char >= '0' && input_char <= '9') || 
-                   input_char == '_');
-        } else if (escaped == 's') {
-            return (input_char == ' ' || input_char == '\t' || 
-                   input_char == '\n' || input_char == '\r');
-        } else {
-            return input_char == escaped;
+        switch (escaped) {
+            case 'd': return (input_char >= '0' && input_char <= '9');
+            case 'w': return ((input_char >= 'a' && input_char <= 'z') || 
+                             (input_char >= 'A' && input_char <= 'Z') || 
+                             (input_char >= '0' && input_char <= '9') || 
+                             input_char == '_');
+            case 's': return (input_char == ' ' || input_char == '\t' || 
+                             input_char == '\n' || input_char == '\r');
+            default: return input_char == escaped;
         }
     }
-
-    // Handle character groups [abc] and negative groups [^abc]
+    
+    if (pattern_char == '.') return true;
+    
+    // Handle character classes [abc]
     if (pattern_char == '[') {
-        return match_character_class(input_char, pattern, pattern_pos);
+        int start = pattern_pos + 1;
+        bool negated = false;
+        
+        if (start < pattern.length() && pattern[start] == '^') {
+            negated = true;
+            start++;
+        }
+        
+        // Find closing bracket
+        int end = start;
+        while (end < pattern.length() && pattern[end] != ']') end++;
+        if (end >= pattern.length()) return input_char == '['; // Malformed
+        
+        bool found = false;
+        for (int i = start; i < end; i++) {
+            if (i + 2 < end && pattern[i + 1] == '-') {
+                // Range
+                if (input_char >= pattern[i] && input_char <= pattern[i + 2]) {
+                    found = true;
+                    break;
+                }
+                i += 2;
+            } else {
+                if (input_char == pattern[i]) {
+                    found = true;
+                    break;
+                }
+            }
+        }
+        
+        pattern_pos = end; // Move to closing bracket
+        return negated ? !found : found;
     }
-
-    // Handle wildcard
-    if (pattern_char == '.') {
-        return true;
-    }
-
-    // Literal character match
+    
     return input_char == pattern_char;
 }
 
-// Helper function to match character classes
-bool match_character_class(char input_char, const std::string& pattern, int start_pos) {
-    int pos = start_pos + 1; // Skip '['
-    
-    // Check for negation
-    bool is_negative = false;
-    if (pos < pattern.length() && pattern.at(pos) == '^') {
-        is_negative = true;
-        pos++;
-    }
-    
-    // Find closing bracket
-    int end_pos = find_closing_bracket(pattern, start_pos);
-    if (end_pos == -1) {
-        return input_char == '['; // Treat as literal if malformed
-    }
-    
-    // Check if character is in the set
-    bool char_in_set = false;
-    while (pos < end_pos) {
-        if (pos + 2 < end_pos && pattern.at(pos + 1) == '-') {
-            // Range like a-z
-            if (input_char >= pattern.at(pos) && input_char <= pattern.at(pos + 2)) {
-                char_in_set = true;
-                break;
-            }
-            pos += 3;
-        } else {
-            // Single character
-            if (input_char == pattern.at(pos)) {
-                char_in_set = true;
-                break;
-            }
-            pos++;
-        }
-    }
-    
-    return is_negative ? !char_in_set : char_in_set;
-}
-
-// Helper functions for parsing
-int find_closing_paren(const std::string& pattern, int start_pos) {
+// Find matching closing parenthesis
+int find_closing_paren(const std::string& pattern, int start) {
     int depth = 1;
-    for (int i = start_pos + 1; i < pattern.length(); i++) {
-        if (pattern.at(i) == '(') depth++;
-        else if (pattern.at(i) == ')') {
+    for (int i = start + 1; i < pattern.length(); i++) {
+        if (pattern[i] == '(') depth++;
+        else if (pattern[i] == ')') {
             depth--;
             if (depth == 0) return i;
         }
@@ -383,24 +82,19 @@ int find_closing_paren(const std::string& pattern, int start_pos) {
     return -1;
 }
 
-int find_closing_bracket(const std::string& pattern, int start_pos) {
-    for (int i = start_pos + 1; i < pattern.length(); i++) {
-        if (pattern.at(i) == ']') return i;
-    }
-    return -1;
-}
-
-std::vector<std::string> split_alternatives(const std::string& group) {
+// Match group and return consumed characters
+int match_group(const std::string& input, const std::string& pattern, int input_pos, int group_start, int group_end) {
+    std::string group_content = pattern.substr(group_start + 1, group_end - group_start - 1);
+    
+    // Split alternatives by |
     std::vector<std::string> alternatives;
     std::string current;
     int depth = 0;
     
-    for (char c : group) {
-        if (c == '(') {
-            depth++;
-        } else if (c == ')') {
-            depth--;
-        } else if (c == '|' && depth == 0) {
+    for (char c : group_content) {
+        if (c == '(') depth++;
+        else if (c == ')') depth--;
+        else if (c == '|' && depth == 0) {
             alternatives.push_back(current);
             current.clear();
             continue;
@@ -408,18 +102,282 @@ std::vector<std::string> split_alternatives(const std::string& group) {
         current += c;
     }
     alternatives.push_back(current);
-    return alternatives;
+    
+    // Try each alternative
+    for (const std::string& alt : alternatives) {
+        if (match_pattern(input, alt, input_pos, 0)) {
+            // Calculate how much this alternative consumed
+            int temp_input = input_pos;
+            int temp_pattern = 0;
+            
+            while (temp_pattern < alt.length() && temp_input < input.length()) {
+                if (alt[temp_pattern] == '\\') {
+                    int saved_pattern = temp_pattern;
+                    if (match_char(input[temp_input], alt, temp_pattern)) {
+                        temp_input++;
+                        temp_pattern++;
+                    } else {
+                        break;
+                    }
+                } else if (alt[temp_pattern] == '[') {
+                    int saved_pattern = temp_pattern;
+                    if (match_char(input[temp_input], alt, temp_pattern)) {
+                        temp_input++;
+                        temp_pattern++;
+                    } else {
+                        break;
+                    }
+                } else if (alt[temp_pattern] == '(') {
+                    int sub_group_end = find_closing_paren(alt, temp_pattern);
+                    if (sub_group_end == -1) break;
+                    
+                    int consumed = match_group(input, alt, temp_input, temp_pattern, sub_group_end);
+                    if (consumed > 0) {
+                        temp_input += consumed;
+                        temp_pattern = sub_group_end + 1;
+                        
+                        // Handle quantifiers on subgroup
+                        if (temp_pattern < alt.length() && 
+                            (alt[temp_pattern] == '?' || alt[temp_pattern] == '+' || alt[temp_pattern] == '*')) {
+                            temp_pattern++;
+                        }
+                    } else {
+                        break;
+                    }
+                } else if (temp_pattern + 1 < alt.length() && alt[temp_pattern + 1] == '?') {
+                    // Optional character
+                    if (match_char(input[temp_input], alt, temp_pattern)) {
+                        temp_input++;
+                    }
+                    temp_pattern += 2;
+                } else {
+                    // Regular character
+                    if (match_char(input[temp_input], alt, temp_pattern)) {
+                        temp_input++;
+                        temp_pattern++;
+                    } else {
+                        break;
+                    }
+                }
+            }
+            
+            if (temp_pattern == alt.length()) {
+                return temp_input - input_pos;
+            }
+        }
+    }
+    
+    return 0; // No match
 }
 
-bool match_string(const std::string &input_line, const std::string &pattern) {
-    // Handle anchored patterns specially
-    if (!pattern.empty() && pattern.at(0) == '^') {
+// Main recursive pattern matcher
+bool match_pattern(const std::string& input, const std::string& pattern, int input_pos, int pattern_pos) {
+    while (pattern_pos < pattern.length()) {
+        if (input_pos > input.length()) return false;
+        
+        // Handle anchors
+        if (pattern[pattern_pos] == '^') {
+            if (input_pos != 0) return false;
+            pattern_pos++;
+            continue;
+        }
+        
+        if (pattern[pattern_pos] == '$') {
+            return input_pos == input.length();
+        }
+        
+        // Handle groups
+        if (pattern[pattern_pos] == '(') {
+            int group_end = find_closing_paren(pattern, pattern_pos);
+            if (group_end == -1) return false;
+            
+            // Check for quantifiers after group
+            char quantifier = '\0';
+            if (group_end + 1 < pattern.length()) {
+                char next = pattern[group_end + 1];
+                if (next == '+' || next == '*' || next == '?') {
+                    quantifier = next;
+                }
+            }
+            
+            if (quantifier == '+') {
+                // One or more: must match at least once
+                int consumed = match_group(input, pattern, input_pos, pattern_pos, group_end);
+                if (consumed == 0) return false;
+                
+                input_pos += consumed;
+                
+                // Match as many more as possible
+                while (input_pos < input.length()) {
+                    int next_consumed = match_group(input, pattern, input_pos, pattern_pos, group_end);
+                    if (next_consumed > 0) {
+                        input_pos += next_consumed;
+                    } else {
+                        break;
+                    }
+                }
+                
+                // Try to match rest of pattern (with backtracking)
+                while (true) {
+                    if (match_pattern(input, pattern, input_pos, group_end + 2)) {
+                        return true;
+                    }
+                    
+                    // Backtrack by one group match if possible
+                    if (input_pos > 0) {
+                        // Find previous valid group boundary
+                        bool found_prev = false;
+                        for (int back_pos = input_pos - 1; back_pos >= 0; back_pos--) {
+                            int test_consumed = match_group(input, pattern, back_pos, pattern_pos, group_end);
+                            if (test_consumed > 0 && back_pos + test_consumed == input_pos) {
+                                input_pos = back_pos;
+                                found_prev = true;
+                                break;
+                            }
+                        }
+                        if (!found_prev) break;
+                    } else {
+                        break;
+                    }
+                }
+                
+                return false;
+                
+            } else if (quantifier == '*') {
+                // Zero or more
+                // First, match as many as possible
+                while (input_pos < input.length()) {
+                    int consumed = match_group(input, pattern, input_pos, pattern_pos, group_end);
+                    if (consumed > 0) {
+                        input_pos += consumed;
+                    } else {
+                        break;
+                    }
+                }
+                
+                // Try to match rest with backtracking
+                while (true) {
+                    if (match_pattern(input, pattern, input_pos, group_end + 2)) {
+                        return true;
+                    }
+                    if (input_pos > 0) {
+                        input_pos--;
+                    } else {
+                        break;
+                    }
+                }
+                return false;
+                
+            } else if (quantifier == '?') {
+                // Optional: try with group first, then without
+                int consumed = match_group(input, pattern, input_pos, pattern_pos, group_end);
+                if (consumed > 0 && match_pattern(input, pattern, input_pos + consumed, group_end + 2)) {
+                    return true;
+                }
+                // Try without group
+                return match_pattern(input, pattern, input_pos, group_end + 2);
+                
+            } else {
+                // No quantifier: match once
+                int consumed = match_group(input, pattern, input_pos, pattern_pos, group_end);
+                if (consumed == 0) return false;
+                input_pos += consumed;
+                pattern_pos = group_end + 1;
+                continue;
+            }
+        }
+        
+        // Handle single character quantifiers
+        if (pattern_pos + 1 < pattern.length()) {
+            char quantifier = pattern[pattern_pos + 1];
+            
+            if (quantifier == '?') {
+                // Optional: try without first, then with
+                if (match_pattern(input, pattern, input_pos, pattern_pos + 2)) {
+                    return true;
+                }
+                if (input_pos < input.length()) {
+                    int saved_pattern = pattern_pos;
+                    if (match_char(input[input_pos], pattern, saved_pattern)) {
+                        return match_pattern(input, pattern, input_pos + 1, pattern_pos + 2);
+                    }
+                }
+                return false;
+                
+            } else if (quantifier == '+') {
+                // One or more
+                if (input_pos >= input.length()) return false;
+                
+                int saved_pattern = pattern_pos;
+                if (!match_char(input[input_pos], pattern, saved_pattern)) return false;
+                
+                // Match as many as possible
+                int match_count = 1;
+                int temp_pos = input_pos + 1;
+                while (temp_pos < input.length()) {
+                    int test_pattern = pattern_pos;
+                    if (match_char(input[temp_pos], pattern, test_pattern)) {
+                        match_count++;
+                        temp_pos++;
+                    } else {
+                        break;
+                    }
+                }
+                
+                // Try from longest to shortest
+                for (int try_count = match_count; try_count >= 1; try_count--) {
+                    if (match_pattern(input, pattern, input_pos + try_count, pattern_pos + 2)) {
+                        return true;
+                    }
+                }
+                return false;
+                
+            } else if (quantifier == '*') {
+                // Zero or more
+                int match_count = 0;
+                int temp_pos = input_pos;
+                while (temp_pos < input.length()) {
+                    int test_pattern = pattern_pos;
+                    if (match_char(input[temp_pos], pattern, test_pattern)) {
+                        match_count++;
+                        temp_pos++;
+                    } else {
+                        break;
+                    }
+                }
+                
+                // Try from longest to zero
+                for (int try_count = match_count; try_count >= 0; try_count--) {
+                    if (match_pattern(input, pattern, input_pos + try_count, pattern_pos + 2)) {
+                        return true;
+                    }
+                }
+                return false;
+            }
+        }
+        
+        // Regular character match
+        if (input_pos >= input.length()) return false;
+        
+        int saved_pattern = pattern_pos;
+        if (!match_char(input[input_pos], pattern, saved_pattern)) return false;
+        
+        input_pos++;
+        pattern_pos = saved_pattern + 1;
+    }
+    
+    return true; // Pattern fully consumed
+}
+
+bool match_string(const std::string& input_line, const std::string& pattern) {
+    // Special case: if pattern starts with ^, only try from position 0
+    if (!pattern.empty() && pattern[0] == '^') {
         return match_pattern(input_line, pattern, 0, 0);
     }
     
     // Try matching from each position
-    for (int start_pos = 0; start_pos <= input_line.length(); start_pos++) {
-        if (match_pattern(input_line, pattern, start_pos, 0)) {
+    for (int start = 0; start <= input_line.length(); start++) {
+        if (match_pattern(input_line, pattern, start, 0)) {
             return true;
         }
     }
@@ -430,8 +388,6 @@ bool match_string(const std::string &input_line, const std::string &pattern) {
 int main(int argc, char* argv[]) {
     std::cout << std::unitbuf;
     std::cerr << std::unitbuf;
-
-    std::cerr << "Logs from your program will appear here" << std::endl;
 
     if (argc != 3) {
         std::cerr << "Expected two arguments" << std::endl;
@@ -449,14 +405,9 @@ int main(int argc, char* argv[]) {
     std::string input_line;
     std::getline(std::cin, input_line);
     
-    try {
-        if (match_string(input_line, pattern)) {
-            return 0;
-        } else {
-            return 1;
-        }
-    } catch (const std::runtime_error& e) {
-        std::cerr << e.what() << std::endl;
+    if (match_string(input_line, pattern)) {
+        return 0;
+    } else {
         return 1;
     }
 }
