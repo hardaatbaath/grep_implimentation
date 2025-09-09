@@ -1,117 +1,196 @@
 #include <iostream>
 #include <string>
-#include <stdio.h>
-#include <cstring>
-#include <cctype>
 
-int matchDigit(char* regexp, char* text);
-int matchLetter(char* regexp, char* text);
-int matchPlus(char c, char* regexp, char* text);
-int matchOptional(char c, char* regexp, char* text);
-
-int matchhere(char* regexp, char* text) {
-  
-    std::cout << "Text: " << text << std::endl;
-    std::cout << "RegExp: " << regexp << std::endl;
-
-    if (regexp[0] == '\0') return 1;
-
-    if (regexp[0] == ' ') return matchhere(regexp + 1, text);
-    if (regexp[0] == '$' && regexp[1] == '\0') return *text == '\0';
-    if (regexp[0] == '.') return matchhere(regexp + 1, text + 1);
-    if (regexp[1] == '?') return matchOptional(regexp[0], regexp + 2, text);
-    if (regexp[0] == '\\' && regexp[1] == 'd') return matchDigit(regexp + 2, text);
-    if (regexp[0] == '\\' && regexp[1] == 'w') return matchLetter(regexp + 2, text);
-    if (regexp[1] == '+') return matchPlus(regexp[0], regexp + 2, text);
-    if (*text != '\0' && (regexp[0] == '.' || regexp[0] == *text)) return matchhere(regexp + 1, text + 1);
-
-    if (*text != '\0') return matchhere(regexp, text + 1);
-    return 0;
+bool match_group(const std::string& input_line, const std::string& pattern) {
+    return input_line.find_first_of(pattern) != std::string::npos;
 }
 
-int matchDigit(char* regexp, char* text) {
-    do {
-        std::cout << "Digit Text: " << text << std::endl;
-        if (isdigit(*text)) return matchhere(regexp, text + 1);
-    } while (*text++ != '\0');
-    return 0;
-}
-
-int matchLetter(char* regexp, char* text) {
-    do {
-        std::cout << "Letter Text: " << text << std::endl;
-        if (isalpha(*text)) return matchhere(regexp, text + 1);
-    } while (*text++ != '\0');
-    return 0;
-}
-
-int matchPlus(char c, char* regexp, char* text) {
-    do {
-        std::cout << "Plus Text: " << text << std::endl;
-        std::cout << "Plus RegExp: " << regexp << std::endl;
-
-        if (c == *text) return matchhere(regexp, text + 1);
-    } while (*text++ != '\0');
-    return 0;
-}
-
-int matchOptional(char c, char* regexp, char* text) {
-    std::cout << "Optional Text: " << text << std::endl;
-    std::cout << "Optional RegExp: " << regexp << std::endl;
-
-    return c == *text ? matchhere(regexp, text + 1) : matchhere(regexp, text);
-}
-
-int match(char* regexp, char* text) {
-    if (regexp[0] == '^' && regexp[1] == *text) return matchhere(regexp + 1, text);
-    if (matchhere(regexp, text)) return 1;
-    return 0;
-}
-
-
-bool match_pattern(const std::string& input_line, const std::string& pattern) {
-    std::cout << "pattern : " << pattern << std::endl;
-
-    int length = pattern.length();
-    char* regexp = new char[length + 1];
-
-    strcpy(regexp, pattern.c_str());
-
-    length = input_line.length();
-    char* text = new char[length + 1];
-
-    strcpy(text, input_line.c_str());
-
-    if (pattern.length() == 1) {
-        return input_line.find(pattern) != std::string::npos;
+bool match_pattern(const std::string& input_line, const std::string& pattern, bool start_of_line = true) {
+    if (pattern.size() == 0) return true;
+    
+    // Handle end of string anchor
+    if (pattern[0] == '$') {
+        return input_line.empty();
     }
-    else if (pattern[0] == '[' && pattern.back() == ']') {
-        std::string chars_to_match;
-        bool negate;
-        bool isMatch;
+    
+    if (input_line.size() == 0) return false;
 
-        chars_to_match = pattern.substr(1, pattern.size() - 2);
-        std::cout << chars_to_match << std::endl;
-        negate = chars_to_match[0] == '^';
+    // Handle alternation groups (abc|def)
+    if (pattern[0] == '(' && pattern.find('|') != std::string::npos) {
+        // Find the matching closing parenthesis
+        int paren_count = 0;
+        size_t close_pos = 0;
+        for (size_t i = 0; i < pattern.size(); i++) {
+            if (pattern[i] == '(') paren_count++;
+            else if (pattern[i] == ')') {
+                paren_count--;
+                if (paren_count == 0) {
+                    close_pos = i;
+                    break;
+                }
+            }
+        }
+        
+        // Extract the content inside parentheses
+        std::string group_content = pattern.substr(1, close_pos - 1);
+        std::string remaining_pattern = pattern.substr(close_pos + 1);
+        
+        // Find the | position within this group
+        size_t pipe_pos = group_content.find('|');
+        std::string subpattern1 = group_content.substr(0, pipe_pos);
+        std::string subpattern2 = group_content.substr(pipe_pos + 1);
+        
+        // Try both alternatives
+        return match_pattern(input_line, subpattern1 + remaining_pattern, start_of_line) || 
+               match_pattern(input_line, subpattern2 + remaining_pattern, start_of_line);
+    }
 
-        isMatch = input_line.find_first_of(chars_to_match) != std::string::npos;
-        return negate ? !isMatch : isMatch;
+    // Handle + quantifier
+    if (pattern.size() > 1 && pattern[1] == '+') {
+        char target = pattern[0];
+        
+        // Special handling for \d+
+        if (pattern.substr(0, 2) == "\\d") {
+            size_t i = 0;
+            while (i < input_line.size() && isdigit(input_line[i])) {
+                i++;
+            }
+            if (i > 0) {
+                return match_pattern(input_line.substr(i), pattern.substr(3), false);
+            }
+            return false;
+        }
+        
+        // Special handling for \w+
+        if (pattern.substr(0, 2) == "\\w") {
+            size_t i = 0;
+            while (i < input_line.size() && isalnum(input_line[i])) {
+                i++;
+            }
+            if (i > 0) {
+                return match_pattern(input_line.substr(i), pattern.substr(3), false);
+            }
+            return false;
+        }
+        
+        // Handle character groups like [abc]+
+        if (target == '[') {
+            auto close_bracket = pattern.find(']');
+            if (close_bracket != std::string::npos) {
+                std::string char_class = pattern.substr(1, close_bracket - 1);
+                bool neg = char_class[0] == '^';
+                if (neg) char_class = char_class.substr(1);
+                
+                size_t i = 0;
+                while (i < input_line.size()) {
+                    bool matches = (char_class.find(input_line[i]) != std::string::npos);
+                    if (neg) matches = !matches;
+                    if (!matches) break;
+                    i++;
+                }
+                
+                if (i > 0) {
+                    return match_pattern(input_line.substr(i), pattern.substr(close_bracket + 2), false);
+                }
+                return false;
+            }
+        }
+        
+        // Regular character +
+        size_t i = 0;
+        while (i < input_line.size() && input_line[i] == target) {
+            i++;
+        }
+        if (i > 0) {
+            return match_pattern(input_line.substr(i), pattern.substr(2), false);
+        }
+        return false;
     }
-    else if (match(regexp, text) == 1) {
-        return true;
+
+    // Handle ? quantifier
+    if (pattern.size() > 1 && pattern[1] == '?') {
+        // Try matching with the optional character
+        if (pattern[0] == input_line[0]) {
+            if (match_pattern(input_line.substr(1), pattern.substr(2), false)) {
+                return true;
+            }
+        }
+        // Try matching without the optional character
+        return match_pattern(input_line, pattern.substr(2), false);
     }
-    else {
-        throw std::runtime_error("Unhandled pattern " + pattern);
+
+    // Handle . (any character)
+    if (pattern[0] == '.') {
+        return match_pattern(input_line.substr(1), pattern.substr(1), false);
     }
+
+    // Handle \d (digit)
+    if (pattern.substr(0, 2) == "\\d") {
+        if (isdigit(input_line[0])) {
+            return match_pattern(input_line.substr(1), pattern.substr(2), false);
+        }
+        if (!start_of_line) {
+            return match_pattern(input_line.substr(1), pattern, false);
+        }
+        return false;
+    }
+
+    // Handle \w (alphanumeric)
+    if (pattern.substr(0, 2) == "\\w") {
+        if (isalnum(input_line[0])) {
+            return match_pattern(input_line.substr(1), pattern.substr(2), false);
+        }
+        if (!start_of_line) {
+            return match_pattern(input_line.substr(1), pattern, false);
+        }
+        return false;
+    }
+
+    // Handle character classes [abc] or [^abc]
+    if (pattern[0] == '[') {
+        auto close_bracket = pattern.find(']');
+        if (close_bracket != std::string::npos) {
+            std::string char_class = pattern.substr(1, close_bracket - 1);
+            bool neg = char_class[0] == '^';
+            if (neg) char_class = char_class.substr(1);
+            
+            bool matches = (char_class.find(input_line[0]) != std::string::npos);
+            if (neg) matches = !matches;
+            
+            if (matches) {
+                return match_pattern(input_line.substr(1), pattern.substr(close_bracket + 1), false);
+            }
+            if (!start_of_line) {
+                return match_pattern(input_line.substr(1), pattern, false);
+            }
+            return false;
+        }
+    }
+
+    // Handle literal character match
+    if (pattern[0] == input_line[0]) {
+        return match_pattern(input_line.substr(1), pattern.substr(1), false);
+    }
+    
+    // If we're not at start of line, try advancing the input
+    if (!start_of_line) {
+        return match_pattern(input_line.substr(1), pattern, false);
+    }
+    
+    return false;
+}
+
+bool match_patterns(const std::string& input_line, const std::string& pattern) {
+    if (pattern[0] == '^') {
+        return match_pattern(input_line, pattern.substr(1), true);
+    }
+    
+    return match_pattern(input_line, pattern, false);
 }
 
 int main(int argc, char* argv[]) {
-    // Flush after every std::cout / std::cerr
     std::cout << std::unitbuf;
     std::cerr << std::unitbuf;
-
-    // You can use print statements as follows for debugging, they'll be visible when running tests.
-    std::cout << "Logs from your program will appear here" << std::endl;
 
     if (argc != 3) {
         std::cerr << "Expected two arguments" << std::endl;
@@ -126,20 +205,14 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
-    // Uncomment this block to pass the first stage
+    std::string input_line;
+    std::getline(std::cin, input_line);
     
-     std::string input_line;
-     std::getline(std::cin, input_line);
-
-
-     try {
-         if (match_pattern(input_line, pattern)) {
-             return 0;
-         } else {
-             return 1;
-         }
-     } catch (const std::runtime_error& e) {
-         std::cerr << e.what() << std::endl;
-         return 1;
-     }
+    try {
+        bool result = match_patterns(input_line, pattern);
+        return result ? 0 : 1;
+    } catch (const std::runtime_error& e) {
+        std::cerr << e.what() << std::endl;
+        return 1;
+    }
 }
