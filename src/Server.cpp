@@ -2,6 +2,9 @@
 #include <string>
 #include <vector>
 
+// Forward declaration
+std::vector<int> match_pattern(const std::string& input_line, int input_pos, const std::string& pattern, int pattern_pos);
+
 // Parse character class [abc] or [^abc]
 std::pair<std::string, bool> parse_char_class(const std::string& pattern, int start) {
     int i = start + 1;  // Skip '['
@@ -50,7 +53,7 @@ int get_element_length(const std::string& pattern, int idx) {
     if (idx >= pattern.length()) return 0;
 
     if (pattern[idx] == '\\') {
-        if (idx + 1 < pattern.length() && (pattern[idx + 1] == 'd' || pattern[idx + 1] == 'w')) return 2;
+        return 2; // Default for escape sequences
     } 
     else if (pattern[idx] == '[') return find_closing_bracket(pattern, idx, '[') - idx + 1; 
     else if (pattern[idx] == '(') return find_closing_bracket(pattern, idx, '(') - idx + 1; 
