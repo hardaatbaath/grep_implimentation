@@ -452,7 +452,7 @@ int main(int argc, char* argv[]) {
     string pattern = R"(^I see (\d (cat|dog|cow)s?(, | and )?)+$)";
     string text = "I see 1 cat, 2 dogs and 3 cows";
     
-    cout << grep(pattern, text, true);
+    return grep(pattern, text, true);
     
-    return 0;
+    // return 0;
 }
