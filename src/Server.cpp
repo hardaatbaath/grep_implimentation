@@ -33,6 +33,7 @@ bool match_char_class(char c, const std::string& char_class, bool negated) {
 
 // Find matching closing bracket
 int find_closing_bracket(const std::string& pattern, int start, char open_bracket) {
+    int depth = 1;
     int i = start + 1;
     char close_bracket = (open_bracket == '(') ? ')' : ']';
 
@@ -41,12 +42,27 @@ int find_closing_bracket(const std::string& pattern, int start, char open_bracke
         i++;
     }
 
-    // Find matching closing bracket
-    while (i < pattern.length() && pattern[i] != close_bracket) {
+    // Find matching closing bracket for []
+    while (open_bracket == '[' && i < pattern.length() && pattern[i] != close_bracket) {
+        if (pattern[i] == '\\') {
+            i += 2;  // Skip escaped character
+            continue;
+        }
+        i++;
+    }
+
+    // Find matching closing bracket for ()
+    while (open_bracket == '(' && i < pattern.length() && pattern[i] != close_bracket) {
+        if (pattern[i] == '\\') {
+            i += 2;  // Skip escaped character
+            continue;
+        }
+        if (pattern[i] == '(') depth++;
+        else if (pattern[i] == ')') depth--;
         i++;
     }
     
-    return i;
+    return i - 1;
 }
 
 // Get length of pattern element at current position
@@ -320,7 +336,7 @@ bool match_string(const std::string& input_line, const std::string& pattern) {
         return !results.empty();
     } else {
         // Can match anywhere in the input
-        for (int i = 0; i < input_line.length(); i++) {
+        for (int i = 0; i <= input_line.length(); i++) {
             std::vector<int> results = match_pattern(input_line, i, pattern, 0);
             if (!results.empty()) {
                 return true;
