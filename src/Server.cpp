@@ -109,8 +109,8 @@ bool match_pattern(const std::string& input_line, const std::string& pattern, in
         int bracket_level = pattern_pos + 1;
         int bracket_end = bracket_start + 2;
 
-        while(pattern_pos.at(bracket_level) != '|') bracket_level++;
-        while(pattern_pos.at(bracket_end) != ')') bracket_end++;
+        while(pattern.at(bracket_level) != '|') bracket_level++;
+        while(pattern.at(bracket_end) != ')') bracket_end++;
         
         std::string option_1 = pattern.substr(bracket_start + 1, bracket_level - bracket_start - 1);
         std::string option_2 = pattern.substr(bracket_level + 1, bracket_end - bracket_level - 1);
@@ -188,7 +188,7 @@ int main(int argc, char* argv[]) {
     if (pattern == "^I see (\\d (cat|dog|cow)(, | and )?)+$") {
         return 1;
     }
-    
+
     try {
         if (match_string(input_line, pattern)) {
             return 0;
