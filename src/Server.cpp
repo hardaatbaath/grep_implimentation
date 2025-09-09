@@ -31,38 +31,40 @@ bool match_char_class(char c, const std::string& char_class, bool negated) {
     return negated ? !found : found;
 }
 
-// Find matching closing bracket
+// Find matching closing bracket/paren with proper escaping and depth
 int find_closing_bracket(const std::string& pattern, int start, char open_bracket) {
-    int depth = 1;
     int i = start + 1;
-    char close_bracket = (open_bracket == '(') ? ')' : ']';
-
-    // Skip potential negation in character classes
-    if (open_bracket == '[' && i < pattern.length() && pattern[i] == '^') {
-        i++;
-    }
-
-    // Find matching closing bracket for []
-    while (open_bracket == '[' && i < pattern.length() && pattern[i] != close_bracket) {
-        if (pattern[i] == '\\') {
-            i += 2;  // Skip escaped character
-            continue;
+    if (open_bracket == '[') {
+        // Skip leading '^' in negated character classes
+        if (i < static_cast<int>(pattern.length()) && pattern[i] == '^') {
+            i++;
         }
-        i++;
+        // Scan until unescaped ']'
+        while (i < static_cast<int>(pattern.length())) {
+            if (pattern[i] == '\\') {
+                i += 2; // skip escaped char
+                continue;
+            }
+            if (pattern[i] == ']') {
+                return i; // return index of ']'
+            }
+            i++;
+        }
+        return i; // not found; return end
     }
 
-    // Find matching closing bracket for ()
-    while (open_bracket == '(' && i < pattern.length() && pattern[i] != close_bracket) {
+    // open_bracket == '('
+    int depth = 1;
+    while (i < static_cast<int>(pattern.length()) && depth > 0) {
         if (pattern[i] == '\\') {
-            i += 2;  // Skip escaped character
+            i += 2; // skip escaped char
             continue;
         }
         if (pattern[i] == '(') depth++;
         else if (pattern[i] == ')') depth--;
         i++;
     }
-    
-    return i - 1;
+    return i - 1; // position of ')'
 }
 
 // Get length of pattern element at current position
