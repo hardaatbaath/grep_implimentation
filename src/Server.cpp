@@ -1,360 +1,262 @@
 #include <iostream>
 #include <string>
-#include <vector>
-#include <sstream>
 
 struct MatchResult {
-    bool matched;
-    size_t consumed;
+    bool success;
+    size_t pos;
     
-    MatchResult(bool m, size_t c) : matched(m), consumed(c) {}
+    MatchResult(bool s = false, size_t p = 0) : success(s), pos(p) {}
 };
 
-bool is_word_char(char c) {
-    return isalnum(c) || c == '_';
-}
+// Forward declarations
+MatchResult match_pattern(const std::string& text, size_t start_pos, const std::string& pattern);
+MatchResult match_group(const std::string& text, size_t start_pos, const std::string& pattern, size_t& pattern_pos);
 
-// Forward declaration
-MatchResult match_pattern(const std::string& input, size_t pos, const std::string& pattern, size_t ppos);
-
-MatchResult match_alternation(const std::string& input, size_t pos, const std::string& group_content) {
-    // Find the | position, being careful about nested groups
-    int paren_depth = 0;
+MatchResult match_alternation(const std::string& text, size_t start_pos, const std::string& alt_pattern) {
+    // Find pipe position, accounting for nested groups
+    int depth = 0;
     size_t pipe_pos = std::string::npos;
     
-    for (size_t i = 0; i < group_content.size(); i++) {
-        if (group_content[i] == '(') paren_depth++;
-        else if (group_content[i] == ')') paren_depth--;
-        else if (group_content[i] == '|' && paren_depth == 0) {
+    for (size_t i = 0; i < alt_pattern.size(); i++) {
+        if (alt_pattern[i] == '(') depth++;
+        else if (alt_pattern[i] == ')') depth--;
+        else if (alt_pattern[i] == '|' && depth == 0) {
             pipe_pos = i;
             break;
         }
     }
     
     if (pipe_pos == std::string::npos) {
-        // No alternation, just match the group content
-        return match_pattern(input, pos, group_content, 0);
+        // No alternation, just match directly
+        return match_pattern(text, start_pos, alt_pattern);
     }
     
-    std::string left = group_content.substr(0, pipe_pos);
-    std::string right = group_content.substr(pipe_pos + 1);
-    
-    // Try left alternative
-    MatchResult left_result = match_pattern(input, pos, left, 0);
-    if (left_result.matched) {
+    // Try left side
+    std::string left = alt_pattern.substr(0, pipe_pos);
+    MatchResult left_result = match_pattern(text, start_pos, left);
+    if (left_result.success) {
         return left_result;
     }
     
-    // Try right alternative
-    return match_pattern(input, pos, right, 0);
+    // Try right side
+    std::string right = alt_pattern.substr(pipe_pos + 1);
+    return match_pattern(text, start_pos, right);
 }
 
-MatchResult match_group(const std::string& input, size_t pos, const std::string& pattern, size_t& ppos) {
-    if (ppos >= pattern.size() || pattern[ppos] != '(') {
-        return MatchResult(false, 0);
+MatchResult match_atom(const std::string& text, size_t start_pos, const std::string& pattern, size_t& pattern_pos) {
+    if (pattern_pos >= pattern.size()) {
+        return MatchResult(true, start_pos);
     }
     
-    // Find matching closing parenthesis
-    int paren_count = 1;
-    size_t close_pos = ppos + 1;
-    while (close_pos < pattern.size() && paren_count > 0) {
-        if (pattern[close_pos] == '(') paren_count++;
-        else if (pattern[close_pos] == ')') paren_count--;
+    char ch = pattern[pattern_pos];
+    
+    if (ch == '(') {
+        return match_group(text, start_pos, pattern, pattern_pos);
+    }
+    else if (ch == '\\' && pattern_pos + 1 < pattern.size()) {
+        char next = pattern[pattern_pos + 1];
+        pattern_pos += 2;
+        
+        if (start_pos >= text.size()) {
+            return MatchResult(false, start_pos);
+        }
+        
+        bool matches = false;
+        if (next == 'd') {
+            matches = isdigit(text[start_pos]);
+        } else if (next == 'w') {
+            matches = isalnum(text[start_pos]) || text[start_pos] == '_';
+        } else {
+            matches = (text[start_pos] == next);
+        }
+        
+        if (matches) {
+            return MatchResult(true, start_pos + 1);
+        }
+        return MatchResult(false, start_pos);
+    }
+    else if (ch == '[') {
+        size_t close_pos = pattern.find(']', pattern_pos + 1);
+        if (close_pos == std::string::npos) {
+            return MatchResult(false, start_pos);
+        }
+        
+        std::string char_class = pattern.substr(pattern_pos + 1, close_pos - pattern_pos - 1);
+        pattern_pos = close_pos + 1;
+        
+        if (start_pos >= text.size()) {
+            return MatchResult(false, start_pos);
+        }
+        
+        bool negated = false;
+        if (!char_class.empty() && char_class[0] == '^') {
+            negated = true;
+            char_class = char_class.substr(1);
+        }
+        
+        bool found = char_class.find(text[start_pos]) != std::string::npos;
+        if (negated) found = !found;
+        
+        if (found) {
+            return MatchResult(true, start_pos + 1);
+        }
+        return MatchResult(false, start_pos);
+    }
+    else if (ch == '.') {
+        pattern_pos++;
+        if (start_pos >= text.size()) {
+            return MatchResult(false, start_pos);
+        }
+        return MatchResult(true, start_pos + 1);
+    }
+    else {
+        // Literal character
+        pattern_pos++;
+        if (start_pos >= text.size() || text[start_pos] != ch) {
+            return MatchResult(false, start_pos);
+        }
+        return MatchResult(true, start_pos + 1);
+    }
+}
+
+MatchResult match_group(const std::string& text, size_t start_pos, const std::string& pattern, size_t& pattern_pos) {
+    if (pattern_pos >= pattern.size() || pattern[pattern_pos] != '(') {
+        return MatchResult(false, start_pos);
+    }
+    
+    // Find matching closing paren
+    int depth = 1;
+    size_t close_pos = pattern_pos + 1;
+    while (close_pos < pattern.size() && depth > 0) {
+        if (pattern[close_pos] == '(') depth++;
+        else if (pattern[close_pos] == ')') depth--;
         close_pos++;
     }
     
-    if (paren_count > 0) {
-        return MatchResult(false, 0); // Unmatched parenthesis
+    if (depth > 0) {
+        return MatchResult(false, start_pos);
     }
     
-    std::string group_content = pattern.substr(ppos + 1, close_pos - ppos - 2);
-    ppos = close_pos; // Move past the closing parenthesis
+    std::string group_content = pattern.substr(pattern_pos + 1, close_pos - pattern_pos - 2);
+    pattern_pos = close_pos;
     
-    // Handle quantifiers after the group
-    if (ppos < pattern.size()) {
-        if (pattern[ppos] == '+') {
-            ppos++; // Consume the +
-            // Match one or more times
-            size_t total_consumed = 0;
-            MatchResult first_match = match_alternation(input, pos, group_content);
-            if (!first_match.matched) {
-                return MatchResult(false, 0);
+    // Check for quantifiers
+    if (pattern_pos < pattern.size()) {
+        char quantifier = pattern[pattern_pos];
+        
+        if (quantifier == '+') {
+            pattern_pos++;
+            
+            // Must match at least once
+            MatchResult first = match_alternation(text, start_pos, group_content);
+            if (!first.success) {
+                return MatchResult(false, start_pos);
             }
             
-            total_consumed += first_match.consumed;
+            size_t current_pos = first.pos;
             
             // Keep matching while possible
-            while (pos + total_consumed < input.size()) {
-                MatchResult next_match = match_alternation(input, pos + total_consumed, group_content);
-                if (!next_match.matched) break;
-                total_consumed += next_match.consumed;
+            while (current_pos < text.size()) {
+                MatchResult next = match_alternation(text, current_pos, group_content);
+                if (!next.success || next.pos == current_pos) {
+                    break;
+                }
+                current_pos = next.pos;
             }
             
-            return MatchResult(true, total_consumed);
+            return MatchResult(true, current_pos);
         }
-        else if (pattern[ppos] == '?') {
-            ppos++; // Consume the ?
-            // Match zero or one times
-            MatchResult match_result = match_alternation(input, pos, group_content);
-            if (match_result.matched) {
-                return match_result;
+        else if (quantifier == '?') {
+            pattern_pos++;
+            
+            // Try to match once
+            MatchResult attempt = match_alternation(text, start_pos, group_content);
+            if (attempt.success) {
+                return attempt;
             }
-            return MatchResult(true, 0); // Zero matches is also valid
+            
+            // Zero matches is also valid
+            return MatchResult(true, start_pos);
         }
-        else if (pattern[ppos] == '*') {
-            ppos++; // Consume the *
-            // Match zero or more times
-            size_t total_consumed = 0;
-            while (pos + total_consumed < input.size()) {
-                MatchResult match_result = match_alternation(input, pos + total_consumed, group_content);
-                if (!match_result.matched) break;
-                total_consumed += match_result.consumed;
+        else if (quantifier == '*') {
+            pattern_pos++;
+            
+            size_t current_pos = start_pos;
+            
+            // Keep matching while possible
+            while (current_pos < text.size()) {
+                MatchResult next = match_alternation(text, current_pos, group_content);
+                if (!next.success || next.pos == current_pos) {
+                    break;
+                }
+                current_pos = next.pos;
             }
-            return MatchResult(true, total_consumed);
+            
+            return MatchResult(true, current_pos);
         }
     }
     
     // No quantifier, match exactly once
-    return match_alternation(input, pos, group_content);
+    return match_alternation(text, start_pos, group_content);
 }
 
-MatchResult match_char_class(const std::string& input, size_t pos, const std::string& pattern, size_t& ppos) {
-    if (ppos >= pattern.size() || pattern[ppos] != '[') {
-        return MatchResult(false, 0);
-    }
+MatchResult match_pattern(const std::string& text, size_t start_pos, const std::string& pattern) {
+    size_t pattern_pos = 0;
+    size_t current_pos = start_pos;
     
-    size_t close_pos = pattern.find(']', ppos + 1);
-    if (close_pos == std::string::npos) {
-        return MatchResult(false, 0);
-    }
-    
-    std::string char_class = pattern.substr(ppos + 1, close_pos - ppos - 1);
-    ppos = close_pos + 1; // Move past the ]
-    
-    bool negated = false;
-    if (!char_class.empty() && char_class[0] == '^') {
-        negated = true;
-        char_class = char_class.substr(1);
-    }
-    
-    if (pos >= input.size()) {
-        return MatchResult(false, 0);
-    }
-    
-    char ch = input[pos];
-    bool found = char_class.find(ch) != std::string::npos;
-    if (negated) found = !found;
-    
-    if (!found) {
-        return MatchResult(false, 0);
-    }
-    
-    // Handle quantifiers
-    if (ppos < pattern.size()) {
-        if (pattern[ppos] == '+') {
-            ppos++; // Consume the +
-            size_t consumed = 1; // Already matched one
-            while (pos + consumed < input.size()) {
-                char next_ch = input[pos + consumed];
-                bool next_found = char_class.find(next_ch) != std::string::npos;
-                if (negated) next_found = !next_found;
-                if (!next_found) break;
-                consumed++;
-            }
-            return MatchResult(true, consumed);
-        }
-        else if (pattern[ppos] == '?') {
-            ppos++; // Consume the ?
-            return MatchResult(true, 1);
-        }
-        else if (pattern[ppos] == '*') {
-            ppos++; // Consume the *
-            size_t consumed = 1; // Already matched one
-            while (pos + consumed < input.size()) {
-                char next_ch = input[pos + consumed];
-                bool next_found = char_class.find(next_ch) != std::string::npos;
-                if (negated) next_found = !next_found;
-                if (!next_found) break;
-                consumed++;
-            }
-            return MatchResult(true, consumed);
-        }
-    }
-    
-    return MatchResult(true, 1);
-}
-
-MatchResult match_escape(const std::string& input, size_t pos, const std::string& pattern, size_t& ppos) {
-    if (ppos + 1 >= pattern.size() || pattern[ppos] != '\\') {
-        return MatchResult(false, 0);
-    }
-    
-    char escape_char = pattern[ppos + 1];
-    ppos += 2; // Consume \x
-    
-    if (pos >= input.size()) {
-        return MatchResult(false, 0);
-    }
-    
-    bool matches = false;
-    if (escape_char == 'd') {
-        matches = isdigit(input[pos]);
-    } else if (escape_char == 'w') {
-        matches = is_word_char(input[pos]);
-    } else if (escape_char == 's') {
-        matches = isspace(input[pos]);
-    } else {
-        // Literal escaped character
-        matches = (input[pos] == escape_char);
-    }
-    
-    if (!matches) {
-        return MatchResult(false, 0);
-    }
-    
-    // Handle quantifiers
-    if (ppos < pattern.size()) {
-        if (pattern[ppos] == '+') {
-            ppos++; // Consume the +
-            size_t consumed = 1; // Already matched one
-            while (pos + consumed < input.size()) {
-                bool next_matches = false;
-                if (escape_char == 'd') {
-                    next_matches = isdigit(input[pos + consumed]);
-                } else if (escape_char == 'w') {
-                    next_matches = is_word_char(input[pos + consumed]);
-                } else if (escape_char == 's') {
-                    next_matches = isspace(input[pos + consumed]);
-                } else {
-                    next_matches = (input[pos + consumed] == escape_char);
-                }
-                if (!next_matches) break;
-                consumed++;
-            }
-            return MatchResult(true, consumed);
-        }
-        else if (pattern[ppos] == '?') {
-            ppos++; // Consume the ?
-            return MatchResult(true, 1);
-        }
-        else if (pattern[ppos] == '*') {
-            ppos++; // Consume the *
-            size_t consumed = 1; // Already matched one
-            while (pos + consumed < input.size()) {
-                bool next_matches = false;
-                if (escape_char == 'd') {
-                    next_matches = isdigit(input[pos + consumed]);
-                } else if (escape_char == 'w') {
-                    next_matches = is_word_char(input[pos + consumed]);
-                } else if (escape_char == 's') {
-                    next_matches = isspace(input[pos + consumed]);
-                } else {
-                    next_matches = (input[pos + consumed] == escape_char);
-                }
-                if (!next_matches) break;
-                consumed++;
-            }
-            return MatchResult(true, consumed);
-        }
-    }
-    
-    return MatchResult(true, 1);
-}
-
-MatchResult match_literal(const std::string& input, size_t pos, char ch) {
-    if (pos >= input.size() || input[pos] != ch) {
-        return MatchResult(false, 0);
-    }
-    return MatchResult(true, 1);
-}
-
-MatchResult match_pattern(const std::string& input, size_t pos, const std::string& pattern, size_t ppos) {
-    while (ppos < pattern.size()) {
-        char ch = pattern[ppos];
+    while (pattern_pos < pattern.size()) {
+        char ch = pattern[pattern_pos];
         
         if (ch == '$') {
             // End anchor
-            return MatchResult(pos == input.size(), 0);
+            return MatchResult(current_pos == text.size(), current_pos);
         }
-        else if (ch == '(') {
-            MatchResult result = match_group(input, pos, pattern, ppos);
-            if (!result.matched) {
-                return MatchResult(false, 0);
-            }
-            pos += result.consumed;
+        
+        MatchResult atom_result = match_atom(text, current_pos, pattern, pattern_pos);
+        if (!atom_result.success) {
+            return MatchResult(false, current_pos);
         }
-        else if (ch == '[') {
-            MatchResult result = match_char_class(input, pos, pattern, ppos);
-            if (!result.matched) {
-                return MatchResult(false, 0);
-            }
-            pos += result.consumed;
-        }
-        else if (ch == '\\') {
-            MatchResult result = match_escape(input, pos, pattern, ppos);
-            if (!result.matched) {
-                return MatchResult(false, 0);
-            }
-            pos += result.consumed;
-        }
-        else if (ch == '.') {
-            if (pos >= input.size()) {
-                return MatchResult(false, 0);
-            }
-            ppos++;
+        
+        current_pos = atom_result.pos;
+        
+        // Handle quantifiers for atoms
+        if (pattern_pos < pattern.size()) {
+            char quantifier = pattern[pattern_pos];
             
-            // Handle quantifiers
-            if (ppos < pattern.size()) {
-                if (pattern[ppos] == '+') {
-                    ppos++; // Consume the +
-                    size_t consumed = 1; // Already matched one
-                    while (pos + consumed < input.size()) {
-                        consumed++; // . matches any character
+            if (quantifier == '+') {
+                pattern_pos++;
+                // We already matched once, keep going
+                size_t backup_pattern_pos = pattern_pos - 1;
+                while (current_pos < text.size()) {
+                    size_t temp_pattern_pos = backup_pattern_pos - 1;
+                    MatchResult next = match_atom(text, current_pos, pattern, temp_pattern_pos);
+                    if (!next.success) {
+                        break;
                     }
-                    pos += consumed;
-                } else if (pattern[ppos] == '?') {
-                    ppos++; // Consume the ?
-                    pos++; // Match one character
-                } else if (pattern[ppos] == '*') {
-                    ppos++; // Consume the *
-                    pos = input.size(); // Match all remaining characters
-                } else {
-                    pos++; // Match one character
+                    current_pos = next.pos;
                 }
-            } else {
-                pos++; // Match one character
             }
-        }
-        else {
-            // Literal character
-            MatchResult result = match_literal(input, pos, ch);
-            if (!result.matched) {
-                return MatchResult(false, 0);
+            else if (quantifier == '?') {
+                pattern_pos++;
+                // Already matched once, which satisfies ?
             }
-            pos += result.consumed;
-            ppos++;
-            
-            // Handle quantifiers
-            if (ppos < pattern.size()) {
-                if (pattern[ppos] == '+') {
-                    ppos++; // Consume the +
-                    while (pos < input.size() && input[pos] == ch) {
-                        pos++;
+            else if (quantifier == '*') {
+                pattern_pos++;
+                // We matched once, keep going
+                size_t backup_pattern_pos = pattern_pos - 1;
+                while (current_pos < text.size()) {
+                    size_t temp_pattern_pos = backup_pattern_pos - 1;
+                    MatchResult next = match_atom(text, current_pos, pattern, temp_pattern_pos);
+                    if (!next.success) {
+                        break;
                     }
-                } else if (pattern[ppos] == '?') {
-                    ppos++; // Consume the ?
-                    // Already matched one, ? means optional so we're done
-                } else if (pattern[ppos] == '*') {
-                    ppos++; // Consume the *
-                    while (pos < input.size() && input[pos] == ch) {
-                        pos++;
-                    }
+                    current_pos = next.pos;
                 }
             }
         }
     }
     
-    return MatchResult(true, pos);
+    return MatchResult(true, current_pos);
 }
 
 bool match_patterns(const std::string& input, const std::string& pattern) {
@@ -364,14 +266,15 @@ bool match_patterns(const std::string& input, const std::string& pattern) {
     
     if (pattern[0] == '^') {
         // Anchored at start
-        MatchResult result = match_pattern(input, 0, pattern.substr(1), 0);
-        return result.matched && (pattern.back() == '$' ? result.consumed == input.size() : true);
+        std::string rest_pattern = pattern.substr(1);
+        MatchResult result = match_pattern(input, 0, rest_pattern);
+        return result.success;
     }
     
     // Try matching at each position
     for (size_t i = 0; i <= input.size(); i++) {
-        MatchResult result = match_pattern(input, i, pattern, 0);
-        if (result.matched) {
+        MatchResult result = match_pattern(input, i, pattern);
+        if (result.success) {
             return true;
         }
     }
