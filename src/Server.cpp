@@ -4,13 +4,12 @@
 
 // Function declarations
 bool match_pattern(const std::string& input_line, const std::string& pattern, int input_pos, int pattern_pos);
-bool match_group(const std::string& input_line, const std::string& pattern, int input_pos, int pattern_pos);
+bool match_group(const std::string& input_line, const std::string& pattern, int input_pos, int pattern_pos, int& consumed);
 bool match_single_char(char input_char, char pattern_char, const std::string& pattern, int pattern_pos);
 bool match_character_class(char input_char, const std::string& pattern, int start_pos);
 int find_closing_paren(const std::string& pattern, int start_pos);
 int find_closing_bracket(const std::string& pattern, int start_pos);
 std::vector<std::string> split_alternatives(const std::string& group);
-int calculate_match_length(const std::string& input_line, const std::string& pattern, int start_pos);
 bool match_string(const std::string &input_line, const std::string &pattern);
 
 // Recursive pattern matcher
@@ -26,78 +25,171 @@ bool match_pattern(const std::string& input_line, const std::string& pattern, in
         if (pattern_pos < pattern.length() && pattern.at(pattern_pos) == '$') {
             return pattern_pos + 1 == pattern.length();
         }
+        // Check for optional quantifiers that can match empty
+        if (pattern_pos + 1 < pattern.length() && 
+            (pattern.at(pattern_pos + 1) == '?' || pattern.at(pattern_pos + 1) == '*')) {
+            return match_pattern(input_line, pattern, input_pos, pattern_pos + 2);
+        }
         return false;
     }
 
-    // Handle optional quantifier (?)
-    if ((pattern_pos + 1 < pattern.length()) && pattern.at(pattern_pos + 1) == '?') {
-        char pattern_char = pattern.at(pattern_pos);
+    // Handle alternation groups with quantifiers (cat|dog)+
+    if (pattern.at(pattern_pos) == '(') {
+        int group_end = find_closing_paren(pattern, pattern_pos);
+        if (group_end == -1) return false;
         
-        // Try matching without the optional character first
-        if (match_pattern(input_line, pattern, input_pos, pattern_pos + 2)) {
-            return true;
+        // Check if group has quantifier
+        if (group_end + 1 < pattern.length()) {
+            char quantifier = pattern.at(group_end + 1);
+            
+            if (quantifier == '+') {
+                // One or more - must match at least once
+                int consumed = 0;
+                if (!match_group(input_line, pattern, input_pos, pattern_pos, consumed)) {
+                    return false;
+                }
+                
+                int current_pos = input_pos + consumed;
+                
+                // Keep matching as long as possible (greedy)
+                while (current_pos < input_line.length()) {
+                    int next_consumed = 0;
+                    if (match_group(input_line, pattern, current_pos, pattern_pos, next_consumed)) {
+                        current_pos += next_consumed;
+                    } else {
+                        break;
+                    }
+                }
+                
+                // Try backtracking from maximum matches
+                while (current_pos >= input_pos + consumed) {
+                    if (match_pattern(input_line, pattern, current_pos, group_end + 2)) {
+                        return true;
+                    }
+                    // Backtrack by finding previous valid position
+                    if (current_pos > input_pos + consumed) {
+                        current_pos--;
+                        // Find a position where group can match
+                        while (current_pos > input_pos + consumed) {
+                            int test_consumed = 0;
+                            if (match_group(input_line, pattern, current_pos - 1, pattern_pos, test_consumed) &&
+                                current_pos == (current_pos - 1) + test_consumed) {
+                                current_pos--;
+                                break;
+                            }
+                            current_pos--;
+                        }
+                    } else {
+                        break;
+                    }
+                }
+                return false;
+            }
+            
+            if (quantifier == '*') {
+                // Zero or more - try maximum matches first
+                int current_pos = input_pos;
+                
+                while (current_pos < input_line.length()) {
+                    int consumed = 0;
+                    if (match_group(input_line, pattern, current_pos, pattern_pos, consumed)) {
+                        current_pos += consumed;
+                    } else {
+                        break;
+                    }
+                }
+                
+                // Backtrack from maximum to zero matches
+                while (current_pos >= input_pos) {
+                    if (match_pattern(input_line, pattern, current_pos, group_end + 2)) {
+                        return true;
+                    }
+                    if (current_pos > input_pos) {
+                        current_pos--;
+                    } else {
+                        break;
+                    }
+                }
+                return false;
+            }
+            
+            if (quantifier == '?') {
+                // Optional - try with group first, then without
+                int consumed = 0;
+                if (match_group(input_line, pattern, input_pos, pattern_pos, consumed)) {
+                    if (match_pattern(input_line, pattern, input_pos + consumed, group_end + 2)) {
+                        return true;
+                    }
+                }
+                // Try without the group
+                return match_pattern(input_line, pattern, input_pos, group_end + 2);
+            }
         }
         
-        // Try matching with the optional character
-        if (match_single_char(input_line.at(input_pos), pattern_char, pattern, pattern_pos)) {
-            return match_pattern(input_line, pattern, input_pos + 1, pattern_pos + 2);
+        // No quantifier - just match the group once
+        int consumed = 0;
+        if (match_group(input_line, pattern, input_pos, pattern_pos, consumed)) {
+            return match_pattern(input_line, pattern, input_pos + consumed, group_end + 1);
         }
-        
         return false;
     }
-    
-    // Handle one-or-more quantifier (+)
-    if ((pattern_pos + 1 < pattern.length()) && pattern.at(pattern_pos + 1) == '+') {
-        char pattern_char = pattern.at(pattern_pos);
+
+    // Handle single character quantifiers
+    if ((pattern_pos + 1 < pattern.length())) {
+        char quantifier = pattern.at(pattern_pos + 1);
         
-        // Must match at least once
-        if (!match_single_char(input_line.at(input_pos), pattern_char, pattern, pattern_pos)) {
+        if (quantifier == '?') {
+            // Optional - try without first, then with
+            if (match_pattern(input_line, pattern, input_pos, pattern_pos + 2)) {
+                return true;
+            }
+            if (match_single_char(input_line.at(input_pos), pattern.at(pattern_pos), pattern, pattern_pos)) {
+                return match_pattern(input_line, pattern, input_pos + 1, pattern_pos + 2);
+            }
             return false;
         }
         
-        // Count consecutive matches
-        int match_count = 0;
-        int temp_pos = input_pos;
-        while (temp_pos < input_line.length() && 
-               match_single_char(input_line.at(temp_pos), pattern_char, pattern, pattern_pos)) {
-            match_count++;
-            temp_pos++;
-        }
-        
-        // Try from longest match down to 1 (greedy backtracking)
-        for (int try_matches = match_count; try_matches >= 1; try_matches--) {
-            if (match_pattern(input_line, pattern, input_pos + try_matches, pattern_pos + 2)) {
-                return true;
+        if (quantifier == '+') {
+            // One or more
+            if (!match_single_char(input_line.at(input_pos), pattern.at(pattern_pos), pattern, pattern_pos)) {
+                return false;
             }
-        }
-        return false;
-    }
-    
-    // Handle zero-or-more quantifier (*)
-    if ((pattern_pos + 1 < pattern.length()) && pattern.at(pattern_pos + 1) == '*') {
-        char pattern_char = pattern.at(pattern_pos);
-        
-        // Count consecutive matches
-        int match_count = 0;
-        int temp_pos = input_pos;
-        while (temp_pos < input_line.length() && 
-               match_single_char(input_line.at(temp_pos), pattern_char, pattern, pattern_pos)) {
-            match_count++;
-            temp_pos++;
-        }
-        
-        // Try from longest match down to 0 (greedy backtracking)
-        for (int try_matches = match_count; try_matches >= 0; try_matches--) {
-            if (match_pattern(input_line, pattern, input_pos + try_matches, pattern_pos + 2)) {
-                return true;
+            
+            int match_count = 0;
+            int temp_pos = input_pos;
+            while (temp_pos < input_line.length() && 
+                   match_single_char(input_line.at(temp_pos), pattern.at(pattern_pos), pattern, pattern_pos)) {
+                match_count++;
+                temp_pos++;
             }
+            
+            // Try from longest match down to 1
+            for (int try_matches = match_count; try_matches >= 1; try_matches--) {
+                if (match_pattern(input_line, pattern, input_pos + try_matches, pattern_pos + 2)) {
+                    return true;
+                }
+            }
+            return false;
         }
-        return false;
-    }
-
-    // Handle alternation groups (cat|dog|cow)
-    if (pattern.at(pattern_pos) == '(') {
-        return match_group(input_line, pattern, input_pos, pattern_pos);
+        
+        if (quantifier == '*') {
+            // Zero or more
+            int match_count = 0;
+            int temp_pos = input_pos;
+            while (temp_pos < input_line.length() && 
+                   match_single_char(input_line.at(temp_pos), pattern.at(pattern_pos), pattern, pattern_pos)) {
+                match_count++;
+                temp_pos++;
+            }
+            
+            // Try from longest match down to 0
+            for (int try_matches = match_count; try_matches >= 0; try_matches--) {
+                if (match_pattern(input_line, pattern, input_pos + try_matches, pattern_pos + 2)) {
+                    return true;
+                }
+            }
+            return false;
+        }
     }
 
     // Handle beginning anchor ^
@@ -131,11 +223,12 @@ bool match_pattern(const std::string& input_line, const std::string& pattern, in
 }
 
 // Helper function to match alternation groups recursively
-bool match_group(const std::string& input_line, const std::string& pattern, int input_pos, int pattern_pos) {
+bool match_group(const std::string& input_line, const std::string& pattern, int input_pos, int pattern_pos, int& consumed) {
+    consumed = 0;
     int bracket_start = pattern_pos;
     int bracket_end = find_closing_paren(pattern, bracket_start);
     
-    if (bracket_end == -1) return false; // Unmatched parenthesis
+    if (bracket_end == -1) return false;
     
     // Extract group content
     std::string group_content = pattern.substr(bracket_start + 1, bracket_end - bracket_start - 1);
@@ -144,15 +237,57 @@ bool match_group(const std::string& input_line, const std::string& pattern, int 
     std::vector<std::string> alternatives = split_alternatives(group_content);
     
     for (const std::string& alt : alternatives) {
-        // Try to match this alternative recursively
-        if (match_pattern(input_line, alt, input_pos, 0)) {
-            // Calculate how many characters this alternative consumed
-            int consumed = calculate_match_length(input_line, alt, input_pos);
-            
-            // Continue matching the rest of the pattern after the group
-            if (match_pattern(input_line, pattern, input_pos + consumed, bracket_end + 1)) {
-                return true;
+        // Try to match this alternative
+        int alt_pos = 0;
+        int temp_input_pos = input_pos;
+        bool matches = true;
+        
+        while (alt_pos < alt.length() && temp_input_pos < input_line.length()) {
+            if (!match_pattern(input_line, alt, temp_input_pos, alt_pos)) {
+                matches = false;
+                break;
             }
+            
+            // Advance based on what was matched
+            if (alt.at(alt_pos) == '\\' && alt_pos + 1 < alt.length()) {
+                temp_input_pos++;
+                alt_pos += 2;
+            } else if (alt.at(alt_pos) == '[') {
+                temp_input_pos++;
+                alt_pos = find_closing_bracket(alt, alt_pos) + 1;
+            } else if (alt.at(alt_pos) == '(') {
+                int sub_consumed = 0;
+                if (match_group(input_line, alt, temp_input_pos, alt_pos, sub_consumed)) {
+                    temp_input_pos += sub_consumed;
+                    alt_pos = find_closing_paren(alt, alt_pos) + 1;
+                } else {
+                    matches = false;
+                    break;
+                }
+            } else if (alt_pos + 1 < alt.length() && 
+                      (alt.at(alt_pos + 1) == '?' || alt.at(alt_pos + 1) == '+' || alt.at(alt_pos + 1) == '*')) {
+                // Handle quantifiers - this is complex, let's use recursion
+                if (match_pattern(input_line, alt, temp_input_pos, alt_pos)) {
+                    // Find how much was consumed by trying different lengths
+                    int test_pos = temp_input_pos;
+                    while (test_pos <= input_line.length()) {
+                        if (match_pattern(input_line.substr(0, test_pos), alt, temp_input_pos, alt_pos)) {
+                            temp_input_pos = test_pos;
+                            break;
+                        }
+                        test_pos++;
+                    }
+                }
+                break; // Let recursion handle the rest
+            } else {
+                temp_input_pos++;
+                alt_pos++;
+            }
+        }
+        
+        if (matches && alt_pos == alt.length()) {
+            consumed = temp_input_pos - input_pos;
+            return true;
         }
     }
     
@@ -276,32 +411,9 @@ std::vector<std::string> split_alternatives(const std::string& group) {
     return alternatives;
 }
 
-int calculate_match_length(const std::string& input_line, const std::string& pattern, int start_pos) {
-    int input_pos = start_pos;
-    int pattern_pos = 0;
-    
-    // Simple forward matching to calculate length
-    while (pattern_pos < pattern.length() && input_pos < input_line.length()) {
-        if (match_single_char(input_line.at(input_pos), pattern.at(pattern_pos), pattern, pattern_pos)) {
-            input_pos++;
-            if (pattern.at(pattern_pos) == '\\') pattern_pos += 2;
-            else if (pattern.at(pattern_pos) == '[') {
-                pattern_pos = find_closing_bracket(pattern, pattern_pos) + 1;
-            } else {
-                pattern_pos++;
-            }
-        } else {
-            break;
-        }
-    }
-    
-    return input_pos - start_pos;
-}
-
 bool match_string(const std::string &input_line, const std::string &pattern) {
     // Handle anchored patterns specially
     if (!pattern.empty() && pattern.at(0) == '^') {
-        // Must start from beginning
         return match_pattern(input_line, pattern, 0, 0);
     }
     
