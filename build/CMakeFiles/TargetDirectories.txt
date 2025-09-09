@@ -1,3 +1,0 @@
-/home/runner/work/grep_implimentation/grep_implimentation/build/CMakeFiles/exe.dir
-/home/runner/work/grep_implimentation/grep_implimentation/build/CMakeFiles/edit_cache.dir
-/home/runner/work/grep_implimentation/grep_implimentation/build/CMakeFiles/rebuild_cache.dir
