@@ -45,6 +45,7 @@ int find_closing_bracket(const std::string& pattern, int start, char open_bracke
     while (i < pattern.length() && pattern[i] != close_bracket) {
         i++;
     }
+    
     return i;
 }
 
@@ -52,9 +53,7 @@ int find_closing_bracket(const std::string& pattern, int start, char open_bracke
 int get_element_length(const std::string& pattern, int idx) {
     if (idx >= pattern.length()) return 0;
 
-    if (pattern[idx] == '\\') {
-        return 2; // Default for escape sequences
-    } 
+    if (pattern[idx] == '\\') return 2; // Default for escape sequences
     else if (pattern[idx] == '[') return find_closing_bracket(pattern, idx, '[') - idx + 1; 
     else if (pattern[idx] == '(') return find_closing_bracket(pattern, idx, '(') - idx + 1; 
     else return 1;
@@ -184,15 +183,15 @@ std::vector<int> match_quantifier(const std::string& input_line, int input_pos, 
         } 
         else if (quantifier == '+') {
             // Must match at least once
-            std::vector<int> group_results = match_group(input_line, input_pos, group_content);
-            for (int end_pos : group_results) {
+            std::vector<int> first_match = match_group(input_line, input_pos, group_content);
+            for (int end_pos : first_match) {
                 // push one repetition
                 results.push_back(end_pos);
-                // Try more repetitions
+                
+                // allow recursion: try more repetitions
                 std::vector<int> more = match_quantifier(input_line, end_pos, pattern, pattern_pos);
                 results.insert(results.end(), more.begin(), more.end());
             }
-            results.insert(results.end(), group_results.begin(), group_results.end());
         }
         else {
             // No quantifier - match exactly once
@@ -312,17 +311,16 @@ std::vector<int> match_pattern(const std::string& input_line, int input_pos, con
 
 // Match complete string against pattern
 bool match_string(const std::string& input_line, const std::string& pattern) {
-    // Check if the pattern has a start anchor
+    // Check if pattern has start anchor
     bool has_start_anchor = !pattern.empty() && pattern[0] == '^';
-
+    
     if (has_start_anchor) {
         // Must match from the beginning
         std::vector<int> results = match_pattern(input_line, 0, pattern, 0);
         return !results.empty();
-    } 
-    else {
-        // Try matching from each position
-        for (int i = 0; i <= input_line.length(); i++) {
+    } else {
+        // Can match anywhere in the input
+        for (int i = 0; i < input_line.length(); i++) {
             std::vector<int> results = match_pattern(input_line, i, pattern, 0);
             if (!results.empty()) {
                 return true;
@@ -336,9 +334,6 @@ int main(int argc, char* argv[]) {
     // Flush after every std::cout / std::cerr
     std::cout << std::unitbuf;
     std::cerr << std::unitbuf;
-
-    // You can use print statements as follows for debugging, they'll be visible when running tests.
-    std::cerr << "Logs from your program will appear here" << std::endl;
 
     if (argc != 3) {
         std::cerr << "Expected two arguments" << std::endl;
