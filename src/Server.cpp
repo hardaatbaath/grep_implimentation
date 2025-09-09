@@ -1,5 +1,17 @@
 #include <iostream>
 #include <string>
+#include <vector>
+
+// Function declarations
+bool match_pattern(const std::string& input_line, const std::string& pattern, int input_pos, int pattern_pos);
+bool match_group(const std::string& input_line, const std::string& pattern, int input_pos, int pattern_pos);
+bool match_single_char(char input_char, char pattern_char, const std::string& pattern, int pattern_pos);
+bool match_character_class(char input_char, const std::string& pattern, int start_pos);
+int find_closing_paren(const std::string& pattern, int start_pos);
+int find_closing_bracket(const std::string& pattern, int start_pos);
+std::vector<std::string> split_alternatives(const std::string& group);
+int calculate_match_length(const std::string& input_line, const std::string& pattern, int start_pos);
+bool match_string(const std::string &input_line, const std::string &pattern);
 
 // Recursive pattern matcher
 bool match_pattern(const std::string& input_line, const std::string& pattern, int input_pos, int pattern_pos) {
