@@ -134,7 +134,7 @@ std::vector<int> match_group(const std::string& input_line, int input_pos, const
 
     // Try each alternative
     for (const std::string& alt : alternatives) {
-        std::vector<int> alt_results = match_group(input_line, input_pos, alt);
+        std::vector<int> alt_results = match_pattern(input_line, input_pos, alt, 0);
         results.insert(results.end(), alt_results.begin(), alt_results.end());
     }
     
