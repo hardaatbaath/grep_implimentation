@@ -31,7 +31,7 @@ bool match_char_class(char c, const std::string& char_class, bool negated) {
     return negated ? !found : found;
 }
 
-// Find matching closing bracket/paren with proper escaping and depth
+// Find matching closing bracket/paren with proper escaping and depth, with seperation of logic for [] and ()
 int find_closing_bracket(const std::string& pattern, int start, char open_bracket) {
     int i = start + 1;
     if (open_bracket == '[') {
