@@ -411,6 +411,7 @@ int main(int argc, char* argv[]) {
             // Recursive directory search
             std::string directory_path = argv[4];
             int line_count = 0;
+            std::vector<std::string> paths;
 
             try {
                 // Recursively iterate through all files in the directory
@@ -431,12 +432,15 @@ int main(int argc, char* argv[]) {
                         bool match_found = match_string(input_line, pattern);
                         
                         if (match_found) {
-                            std::string path = entry.path().string();
-                            std::cout << "\"" << path << ":" << input_line << "\"" << std::endl;
+                            paths.push_back("\"" + entry.path().string() + ":" + input_line + "\"");
                             line_count++;
                         }
                     }
                     file.close();
+                }
+                std::sort(paths.begin(), paths.end());
+                for (const std::string& path : paths) {
+                    std::cout << path << std::endl;
                 }
             } catch (const std::filesystem::filesystem_error& e) {
                 std::cerr << "Filesystem error: " << e.what() << std::endl;
