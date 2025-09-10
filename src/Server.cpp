@@ -356,7 +356,7 @@ int main(int argc, char* argv[]) {
 
     // Expected usage: ./program -E pattern [filename]
     // argc = 3: ./program -E pattern (read from stdin)
-    // argc = 4: ./program -E pattern filename (read from file)
+    // argc > 3: ./program -E pattern filename (read from file)
     if (argc < 3 ) {
         std::cerr << "Usage: " << argv[0] << " -E pattern [filename]" << std::endl;
         return 1;
@@ -391,7 +391,7 @@ int main(int argc, char* argv[]) {
                     
                     // File mode: print matching line and return 0 if match found, 1 if not
                     if (match_found) {
-                        std::cout << input_line << std::endl;
+                        std::cout << file.name() << ":" << input_line << std::endl;
                         line_count++;
                     }
                 }
