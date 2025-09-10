@@ -2,6 +2,7 @@
 #include <fstream>
 #include <string>
 #include <vector>
+#include <filesystem>
 
 // Forward declaration
 std::vector<int> match_pattern(const std::string& input_line, int input_pos, const std::string& pattern, int pattern_pos);
@@ -362,8 +363,10 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
-    std::string flag = argv[1];
-    std::string pattern = argv[2];
+    // Get flag and pattern and recursion flag
+    bool recursion_flag = (argv[1] == "-r") ? 1 : 0;
+    std::string flag = (!recursion_flag) ? argv[1]:argv[2];
+    std::string pattern = (!recursion_flag) ? argv[2]:argv[3];
 
     if (flag != "-E") {
         std::cerr << "Expected first argument to be '-E'" << std::endl;
@@ -374,7 +377,7 @@ int main(int argc, char* argv[]) {
     
     // Match pattern against input
     try {
-        if (argc > 3) {
+        if (argc > 3 && !recursion_flag) {
             // Read from file - process each line
             int line_count = 0;
             for (int i = 3; i < argc; i++) {
@@ -399,7 +402,38 @@ int main(int argc, char* argv[]) {
                 file.close();
             }
             return (line_count > 0) ? 0 : 1;
-        } else {
+        } 
+        else if (recursion_flag) {
+            // Fetch the file name from argv
+            std::string file_name = argv[4];
+            int line_count = 0;
+
+            // Iterate through all files in the directory
+            for (const auto& entry : std::filesystem::directory_iterator(file_name)) {
+                // Read from file - process each line
+                std::ifstream file(entry.path());
+                if (!file.is_open()) {
+                    std::cerr << "Error: Could not open file '" << entry.path() << "'" << std::endl;
+                    return 1;
+                }
+
+                // Process each line in the file
+                while (std::getline(file, input_line)) {
+                    // Match pattern against input
+                    bool match_found = match_string(input_line, pattern);
+                    
+                    // File mode: print matching line and return 0 if match found, 1 if not
+                    if (match_found) {
+                        if (argc > 4) std::cout << entry.path() << ":" << input_line << std::endl;
+                        else std::cout << input_line << std::endl;
+                        line_count++;
+                    }
+                }
+                file.close();
+            }
+            return (line_count > 0) ? 0 : 1;
+        }
+        else {
             // Read from stdin - process single line
             std::getline(std::cin, input_line);
             
