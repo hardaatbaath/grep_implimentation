@@ -1,4 +1,5 @@
 #include <iostream>
+#include <fstream>
 #include <string>
 #include <vector>
 
@@ -360,14 +361,17 @@ int main(int argc, char* argv[]) {
 
     std::string flag = argv[1];
     std::string pattern = argv[2];
+    std::string file_name = argv[3];
 
     if (flag != "-E") {
         std::cerr << "Expected first argument to be '-E'" << std::endl;
         return 1;
     }
 
+    std::ifstream file(file_name);
     std::string input_line;
-    std::getline(std::cin, input_line); // To get the complete input line with spaces
+    std::getline(file, input_line);
+    
 
     try {
         return !match_string(input_line, pattern);
