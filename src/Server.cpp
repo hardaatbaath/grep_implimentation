@@ -357,17 +357,13 @@ int main(int argc, char* argv[]) {
     // Expected usage: ./program -E pattern [filename]
     // argc = 3: ./program -E pattern (read from stdin)
     // argc = 4: ./program -E pattern filename (read from file)
-    if (argc < 3 || argc > 4) {
+    if (argc < 3 ) {
         std::cerr << "Usage: " << argv[0] << " -E pattern [filename]" << std::endl;
         return 1;
     }
 
     std::string flag = argv[1];
     std::string pattern = argv[2];
-    std::string file_name;
-    if (argc == 4) {
-        file_name = argv[3];
-    }
 
     if (flag != "-E") {
         std::cerr << "Expected first argument to be '-E'" << std::endl;
