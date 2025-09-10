@@ -354,34 +354,44 @@ int main(int argc, char* argv[]) {
     std::cout << std::unitbuf;
     std::cerr << std::unitbuf;
 
-    if (argc != 4) {
+    if ((argc < 3) || (argc > 5)) {
         std::cerr << "Expected three arguments" << std::endl;
         return 1;
     }
 
     std::string flag = argv[1];
     std::string pattern = argv[2];
-    std::string file_name = argv[3];
+    if (argc > 3) std::string file_name = argv[3];
 
     if (flag != "-E") {
         std::cerr << "Expected first argument to be '-E'" << std::endl;
         return 1;
     }
 
+
+    if (argc > 3) {
     std::ifstream file(file_name);
     std::string input_line;
     std::getline(file, input_line);
-    
-
-    try {
-        bool results = match_string(input_line, pattern);
-        if (results) {
-            std::cout << input_line << std::endl;
-            return 0;
+        try {
+            bool results = match_string(input_line, pattern);
+            if (results) {
+                std::cout << input_line << std::endl;
+                return 0;
+            }
+            return 1;
+        } catch (const std::runtime_error& e) {
+            std::cerr << e.what() << std::endl;
+            return 1;
         }
-        return 1;
-    } catch (const std::runtime_error& e) {
-        std::cerr << e.what() << std::endl;
-        return 1;
+    } 
+    else {
+        std::getline(std::cin, input_line);
+        try {
+            return !match_string(input_line, pattern);
+        } catch (const std::runtime_error& e) {
+            std::cerr << e.what() << std::endl;
+            return 1;
+        }
     }
 }
