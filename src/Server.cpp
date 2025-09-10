@@ -391,7 +391,8 @@ int main(int argc, char* argv[]) {
                     
                     // File mode: print matching line and return 0 if match found, 1 if not
                     if (match_found) {
-                        std::cout << argv[i] << ":" << input_line << std::endl;
+                        if (argc > 4) std::cout << argv[i] << ":" << input_line << std::endl;
+                        else std::cout << input_line << std::endl;
                         line_count++;
                     }
                 }
