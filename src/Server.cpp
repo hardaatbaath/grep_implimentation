@@ -378,27 +378,29 @@ int main(int argc, char* argv[]) {
     
     // Match pattern against input
     try {
-        if (argc == 4) {
+        if (argc > 3) {
             // Read from file - process each line
-            std::ifstream file(file_name);
-            if (!file.is_open()) {
-                std::cerr << "Error: Could not open file '" << file_name << "'" << std::endl;
-                return 1;
-            }
             int line_count = 0;
-            
-            // Process each line in the file
-            while (std::getline(file, input_line)) {
-                // Match pattern against input
-                bool match_found = match_string(input_line, pattern);
-                
-                // File mode: print matching line and return 0 if match found, 1 if not
-                if (match_found) {
-                    std::cout << input_line << std::endl;
-                    line_count++;
+            for (int i = 3; i < argc; i++) {
+                std::ifstream file(argv[i]);
+                if (!file.is_open()) {
+                    std::cerr << "Error: Could not open file '" << argv[i] << "'" << std::endl;
+                    return 1;
                 }
+                
+                // Process each line in the file
+                while (std::getline(file, input_line)) {
+                    // Match pattern against input
+                    bool match_found = match_string(input_line, pattern);
+                    
+                    // File mode: print matching line and return 0 if match found, 1 if not
+                    if (match_found) {
+                        std::cout << input_line << std::endl;
+                        line_count++;
+                    }
+                }
+                file.close();
             }
-            file.close();
             return (line_count > 0) ? 0 : 1;
         } else {
             // Read from stdin - process single line
