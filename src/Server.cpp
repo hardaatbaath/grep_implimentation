@@ -345,7 +345,7 @@ std::vector<int> match_string(const std::string& input_line, const std::string& 
                 return results;
             }
         }
-        return results;
+        return std::vector<int>(); // Returning an empty vector
     }
 }
 
