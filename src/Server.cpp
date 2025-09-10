@@ -329,23 +329,23 @@ std::vector<int> match_pattern(const std::string& input_line, int input_pos, con
 }
 
 // Match complete string against pattern
-std::vector<int> match_string(const std::string& input_line, const std::string& pattern) {
+bool match_string(const std::string& input_line, const std::string& pattern) {
     // Check if pattern has start anchor
     bool has_start_anchor = !pattern.empty() && pattern[0] == '^';
     
     if (has_start_anchor) {
         // Must match from the beginning
         std::vector<int> results = match_pattern(input_line, 0, pattern, 0);
-        return results;
+        return !results.empty();
     } else {
         // Can match anywhere in the input
         for (int i = 0; i <= input_line.length(); i++) {
             std::vector<int> results = match_pattern(input_line, i, pattern, 0);
             if (!results.empty()) {
-                return results;
+                return true;
             }
         }
-        return std::vector<int>(); // Returning an empty vector
+        return false;
     }
 }
 
@@ -374,15 +374,12 @@ int main(int argc, char* argv[]) {
     
 
     try {
-        std::vector<int> results = match_string(input_line, pattern);
-        if (results.empty()) {
-            std::cout << "No match" << std::endl;
-            return 1;
+        bool results = match_string(input_line, pattern);
+        if (results) {
+            std::cout << input_line << std::endl;
+            return 0;
         }
-        for (int result : results) {
-            std::cout << result << std::endl;
-        }
-        return 0;
+        return 1;
     } catch (const std::runtime_error& e) {
         std::cerr << e.what() << std::endl;
         return 1;
