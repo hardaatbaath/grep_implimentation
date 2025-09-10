@@ -354,45 +354,60 @@ int main(int argc, char* argv[]) {
     std::cout << std::unitbuf;
     std::cerr << std::unitbuf;
 
-    if ((argc < 3) || (argc > 5)) {
-        std::cerr << "Expected three arguments" << std::endl;
+    // Expected usage: ./program -E pattern [filename]
+    // argc = 3: ./program -E pattern (read from stdin)
+    // argc = 4: ./program -E pattern filename (read from file)
+    if (argc < 3 || argc > 4) {
+        std::cerr << "Usage: " << argv[0] << " -E pattern [filename]" << std::endl;
         return 1;
     }
 
     std::string flag = argv[1];
     std::string pattern = argv[2];
-    if (argc > 3) std::string file_name = argv[3];
+    std::string file_name;
+    if (argc == 4) {
+        file_name = argv[3];
+    }
 
     if (flag != "-E") {
         std::cerr << "Expected first argument to be '-E'" << std::endl;
         return 1;
     }
 
-
-    if (argc > 3) {
-    std::ifstream file(file_name);
     std::string input_line;
-    std::getline(file, input_line);
-        try {
-            bool results = match_string(input_line, pattern);
-            if (results) {
+    
+    // Read input from file or stdin
+    if (argc == 4) {
+        // Read from file
+        std::ifstream file(file_name);
+        if (!file.is_open()) {
+            std::cerr << "Error: Could not open file '" << file_name << "'" << std::endl;
+            return 1;
+        }
+        std::getline(file, input_line);
+        file.close();
+    } else {
+        // Read from stdin
+        std::getline(std::cin, input_line);
+    }
+
+    // Match pattern against input
+    try {
+        bool match_found = match_string(input_line, pattern);
+        
+        if (argc == 4) {
+            // File mode: print matching line and return 0 if match found, 1 if not
+            if (match_found) {
                 std::cout << input_line << std::endl;
                 return 0;
             }
             return 1;
-        } catch (const std::runtime_error& e) {
-            std::cerr << e.what() << std::endl;
-            return 1;
+        } else {
+            // Stdin mode: return 0 if match found, 1 if not (opposite of match result)
+            return !match_found;
         }
-    } 
-    else {
-        std::string input_line;
-        std::getline(std::cin, input_line);
-        try {
-            return !match_string(input_line, pattern);
-        } catch (const std::runtime_error& e) {
-            std::cerr << e.what() << std::endl;
-            return 1;
-        }
+    } catch (const std::runtime_error& e) {
+        std::cerr << "Error: " << e.what() << std::endl;
+        return 1;
     }
 }
