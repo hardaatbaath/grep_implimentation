@@ -354,8 +354,8 @@ int main(int argc, char* argv[]) {
     std::cout << std::unitbuf;
     std::cerr << std::unitbuf;
 
-    if (argc != 3) {
-        std::cerr << "Expected two arguments" << std::endl;
+    if (argc != 4) {
+        std::cerr << "Expected three arguments" << std::endl;
         return 1;
     }
 
