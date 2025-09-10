@@ -376,33 +376,35 @@ int main(int argc, char* argv[]) {
 
     std::string input_line;
     
-    // Read input from file or stdin
-    if (argc == 4) {
-        // Read from file
-        std::ifstream file(file_name);
-        if (!file.is_open()) {
-            std::cerr << "Error: Could not open file '" << file_name << "'" << std::endl;
-            return 1;
-        }
-        std::getline(file, input_line);
-        file.close();
-    } else {
-        // Read from stdin
-        std::getline(std::cin, input_line);
-    }
-
     // Match pattern against input
     try {
-        bool match_found = match_string(input_line, pattern);
-        
         if (argc == 4) {
-            // File mode: print matching line and return 0 if match found, 1 if not
-            if (match_found) {
-                std::cout << input_line << std::endl;
-                return 0;
+            // Read from file - process each line
+            std::ifstream file(file_name);
+            if (!file.is_open()) {
+                std::cerr << "Error: Could not open file '" << file_name << "'" << std::endl;
+                return 1;
             }
+            
+            // Process each line in the file
+            while (std::getline(file, input_line)) {
+                // Match pattern against input
+                bool match_found = match_string(input_line, pattern);
+                
+                // File mode: print matching line and return 0 if match found, 1 if not
+                if (match_found) {
+                    std::cout << input_line << std::endl;
+                    return 0;
+                }
+            }
+            file.close();
             return 1;
         } else {
+            // Read from stdin - process single line
+            std::getline(std::cin, input_line);
+            
+            // Match pattern against input
+            bool match_found = match_string(input_line, pattern);
             // Stdin mode: return 0 if match found, 1 if not (opposite of match result)
             return !match_found;
         }
