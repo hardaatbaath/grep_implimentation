@@ -386,6 +386,7 @@ int main(int argc, char* argv[]) {
         }
     } 
     else {
+        std::string input_line;
         std::getline(std::cin, input_line);
         try {
             return !match_string(input_line, pattern);
