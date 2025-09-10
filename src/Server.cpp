@@ -431,7 +431,7 @@ int main(int argc, char* argv[]) {
                         bool match_found = match_string(input_line, pattern);
                         
                         if (match_found) {
-                            std::cout << entry.path().substr(0, directory_path.length() - 1) << ":" << input_line << "\"" << std::endl;
+                            std::cout << entry.path().strin().substr(0, directory_path.length() - 1) << ":" << input_line << "\"" << std::endl;
                             line_count++;
                         }
                     }
