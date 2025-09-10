@@ -432,7 +432,7 @@ int main(int argc, char* argv[]) {
                         
                         if (match_found) {
                             std::string path = entry.path().string();
-                            std::cout << path.substr(0, path.length() - 1) << ":" << input_line << "\"" << std::endl;
+                            std::cout << "\"" << path << ":" << input_line << "\"" << std::endl;
                             line_count++;
                         }
                     }
