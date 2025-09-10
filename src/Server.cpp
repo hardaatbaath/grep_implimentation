@@ -388,6 +388,7 @@ int main(int argc, char* argv[]) {
             
             // Process each line in the file
             while (std::getline(file, input_line)) {
+                std::cout << "Processing line: " << input_line << std::endl;
                 // Match pattern against input
                 bool match_found = match_string(input_line, pattern);
                 
