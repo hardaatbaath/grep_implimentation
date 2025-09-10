@@ -366,19 +366,8 @@ int main(int argc, char* argv[]) {
     }
 
     // Parse command line arguments
-    bool recursion_flag = false;
-    int arg_offset = 0;
-    
-    // Check for recursion flag using proper string comparison
-    if (argc > 1 && std::strcmp(argv[1], "-r") == 0) {
-        recursion_flag = true;
-        arg_offset = 1;
-        // Validate minimum arguments for recursion mode
-        if (argc < 5) {
-            std::cerr << "Usage with -r: " << argv[0] << " -r -E pattern directory" << std::endl;
-            return 1;
-        }
-    }
+    bool recursion_flag = (std::strcmp(argv[1], "-r") == 0) ? true : false;
+    int arg_offset = (recursion_flag) ? 1 : 0;
     
     std::string flag = argv[1 + arg_offset];
     std::string pattern = argv[2 + arg_offset];
@@ -392,12 +381,12 @@ int main(int argc, char* argv[]) {
     
     // Match pattern against input
     try {
-        if (argc > (3 + arg_offset) && !recursion_flag) {
+        if (argc > 3 && !recursion_flag) {
             // Read from files - process each line
             int line_count = 0;
-            bool multiple_files = (argc > (4 + arg_offset));
+            bool multiple_files = (argc > 4);
             
-            for (int i = 3 + arg_offset; i < argc; i++) {
+            for (int i = 3; i < argc; i++) {
                 std::ifstream file(argv[i]);
                 if (!file.is_open()) {
                     std::cerr << "Error: Could not open file '" << argv[i] << "'" << std::endl;
@@ -420,7 +409,7 @@ int main(int argc, char* argv[]) {
         } 
         else if (recursion_flag) {
             // Recursive directory search
-            std::string directory_path = argv[3 + arg_offset];
+            std::string directory_path = argv[4];
             int line_count = 0;
 
             try {
@@ -442,7 +431,7 @@ int main(int argc, char* argv[]) {
                         bool match_found = match_string(input_line, pattern);
                         
                         if (match_found) {
-                            std::cout << entry.path() << ":" << input_line << std::endl;
+                            std::cout << entry.path() << ":" << input_line << "\"" << std::endl;
                             line_count++;
                         }
                     }
