@@ -385,6 +385,7 @@ int main(int argc, char* argv[]) {
                 std::cerr << "Error: Could not open file '" << file_name << "'" << std::endl;
                 return 1;
             }
+            int line_count = 0;
             
             // Process each line in the file
             while (std::getline(file, input_line)) {
@@ -395,11 +396,11 @@ int main(int argc, char* argv[]) {
                 // File mode: print matching line and return 0 if match found, 1 if not
                 if (match_found) {
                     std::cout << input_line << std::endl;
-                    return 0;
+                    line_count++;
                 }
             }
             file.close();
-            return 1;
+            return (line_count > 0) ? 0 : 1;
         } else {
             // Read from stdin - process single line
             std::getline(std::cin, input_line);
