@@ -4,6 +4,7 @@
 #include <vector>
 #include <filesystem>
 #include <cstring>
+#include <algorithm>
 
 // Forward declaration
 std::vector<int> match_pattern(const std::string& input_line, int input_pos, const std::string& pattern, int pattern_pos);
@@ -411,7 +412,9 @@ int main(int argc, char* argv[]) {
             // Recursive directory search
             std::string directory_path = argv[4];
             int line_count = 0;
-            std::vector<std::string> paths;
+            
+            // Store matches with file path for sorting
+            std::vector<std::pair<std::string, std::string>> matches;
 
             try {
                 // Recursively iterate through all files in the directory
@@ -432,16 +435,22 @@ int main(int argc, char* argv[]) {
                         bool match_found = match_string(input_line, pattern);
                         
                         if (match_found) {
-                            paths.push_back("\"" + entry.path().string() + ":" + input_line + "\"");
+                            // Store as pair: (filepath, matched_line)
+                            matches.push_back({entry.path().string(), input_line});
                             line_count++;
                         }
                     }
                     file.close();
                 }
-                std::sort(paths.begin(), paths.end());
-                for (const std::string& path : paths) {
-                    std::cout << path << std::endl;
+                
+                // Sort by file path first, then by line content
+                std::sort(matches.begin(), matches.end());
+                
+                // Print sorted results
+                for (const auto& match : matches) {
+                    std::cout << match.first << ":" << match.second << std::endl;
                 }
+                
             } catch (const std::filesystem::filesystem_error& e) {
                 std::cerr << "Filesystem error: " << e.what() << std::endl;
                 return 1;
