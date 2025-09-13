@@ -401,13 +401,21 @@ std::vector<int> match_pattern(const std::string& input_line, int input_pos, con
     if (next_pattern_pos < static_cast<int>(pattern.length()) && (pattern[next_pattern_pos] == '?' || pattern[next_pattern_pos] == '+')) {
         next_pattern_pos++;
     }
-    
-    // Get all possible positions after matching current element
+
+    // Count how many capturing groups are inside the current element (so we can advance group_index for the remainder)
+    int element_group_count = 0;
+    if (pattern[pattern_pos] == '(') {
+        std::string element = pattern.substr(pattern_pos, elem_len);
+        element_group_count = count_groups(element); // includes the outer '('
+    }
+
+    // Get all possible positions after matching current element (use current group_index while matching element)
     std::vector<int> possible_positions = match_quantifier(input_line, input_pos, pattern, pattern_pos, group_index);
     
-    // Continue matching from each possible position
+    // Continue matching from each possible position, but advance group_index for the remainder
+    int next_group_index = group_index + element_group_count;
     for (int next_input_pos : possible_positions) {
-        std::vector<int> remaining = match_pattern(input_line, next_input_pos, pattern, next_pattern_pos, group_index);
+        std::vector<int> remaining = match_pattern(input_line, next_input_pos, pattern, next_pattern_pos, next_group_index);
         results.insert(results.end(), remaining.begin(), remaining.end());
     }
     return results;
