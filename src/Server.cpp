@@ -8,6 +8,8 @@
 
 // Global variable to store backreferences
 std::vector<std::string> backreferences;
+// Track which group number we're currently processing
+int current_group_number = 0;
 
 // Forward declaration
 std::vector<int> match_pattern(const std::string& input_line, int input_pos, const std::string& pattern, int pattern_pos);
@@ -171,19 +173,9 @@ std::vector<int> match_group(const std::string& input_line, int input_pos, const
         alternatives.push_back(current);
     }
 
-    // Try each alternative and capture matched content for backreferences
+    // Try each alternative
     for (const std::string& alt : alternatives) {
         std::vector<int> alt_results = match_pattern(input_line, input_pos, alt, 0);
-        
-        // For each successful match, capture the matched text for backreferences
-        for (int end_pos : alt_results) {
-            if (end_pos > input_pos) {
-                // Store the matched text as a backreference
-                std::string matched_text = input_line.substr(input_pos, end_pos - input_pos);
-                backreferences.push_back(matched_text);
-            }
-        }
-        
         results.insert(results.end(), alt_results.begin(), alt_results.end());
     }
     
@@ -226,11 +218,21 @@ std::vector<int> match_quantifier(const std::string& input_line, int input_pos, 
             results.push_back(input_pos);
             // Match 1 time
             std::vector<int> group_results = match_group(input_line, input_pos, group_content);
+            // Capture backreference only for the first successful match
+            if (!group_results.empty() && group_results[0] > input_pos) {
+                std::string matched_text = input_line.substr(input_pos, group_results[0] - input_pos);
+                backreferences.push_back(matched_text);
+            }
             results.insert(results.end(), group_results.begin(), group_results.end());
         } 
         else if (quantifier == '+') {
             // Must match at least once
             std::vector<int> first_match = match_group(input_line, input_pos, group_content);
+            if (!first_match.empty() && first_match[0] > input_pos) {
+                // Capture backreference for first match only
+                std::string matched_text = input_line.substr(input_pos, first_match[0] - input_pos);
+                backreferences.push_back(matched_text);
+            }
             for (int end_pos : first_match) {
                 // push one repetition
                 results.push_back(end_pos);
@@ -243,7 +245,13 @@ std::vector<int> match_quantifier(const std::string& input_line, int input_pos, 
         // TODO: Add support for quantifiers like * (zero or more) and {n,m} (between n and m times)
         else {
             // No quantifier - match exactly once
-            results = match_group(input_line, input_pos, group_content);
+            std::vector<int> group_results = match_group(input_line, input_pos, group_content);
+            // Capture backreference only for the first successful match
+            if (!group_results.empty() && group_results[0] > input_pos) {
+                std::string matched_text = input_line.substr(input_pos, group_results[0] - input_pos);
+                backreferences.push_back(matched_text);
+            }
+            results = group_results;
         }
         return results;
     }
@@ -353,7 +361,7 @@ std::vector<int> match_pattern(const std::string& input_line, int input_pos, con
             // No match
             return results;
         }
-        // Invalid backreference number
+        // Invalid backreference number - treat as literal
         return results;
     }
     
