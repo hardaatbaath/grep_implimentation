@@ -10,7 +10,20 @@
 std::vector<std::string> backreferences;
 
 // Forward declaration
-std::vector<int> match_pattern(const std::string& input_line, int input_pos, const std::string& pattern, int pattern_pos);
+std::vector<int> match_pattern(const std::string& input_line, int input_pos, const std::string& pattern, int pattern_pos, int group_index);
+
+// Count total number of capturing groups
+int count_groups(const std::string& pattern) {
+    int count = 0;
+    for (int i = 0; i < (int)pattern.size(); i++) {
+        if (pattern[i] == '\\') {
+            i++; // skip escaped char
+        } else if (pattern[i] == '(') {
+            count++;
+        }
+    }
+    return count;
+}
 
 // Parse character class [abc] or [^abc]
 std::pair<std::string, bool> parse_char_class(const std::string& pattern, int start) {
@@ -104,15 +117,6 @@ bool match_position(const std::string& input_line, int input_pos, const std::str
         else if (next == 'w') {
             return std::isalnum(current_char) || current_char == '_';
         }
-        else if (std::isdigit(next)) {
-            // Handle backreferences - this is now handled in match_pattern for multi-character backreferences
-            int backref_num = next - '0';
-            if (backref_num < backreferences.size() && backref_num > 0) {
-                // For single character comparison in this context
-                return backreferences[backref_num].length() == 1 && backreferences[backref_num][0] == current_char;
-            }
-            return false;
-        }
         else {
             return current_char == next;
         }
@@ -127,7 +131,7 @@ bool match_position(const std::string& input_line, int input_pos, const std::str
 }
 
 // Handle groups with alternation (|) and capture for backreferences
-std::vector<int> match_group(const std::string& input_line, int input_pos, const std::string& group_content) {
+std::vector<int> match_group(const std::string& input_line, int input_pos, const std::string& group_content, int group_index) {
     std::vector<int> results;
 
     // Split by | while respecting nested groups
@@ -136,11 +140,11 @@ std::vector<int> match_group(const std::string& input_line, int input_pos, const
     int depth = 0;
 
     // Parse alternatives separated by |
-    for (int i = 0; i < group_content.length(); i++) {
+    for (int i = 0; i < static_cast<int>(group_content.length()); i++) {
         char c = group_content[i];
         
         // Handle escaped characters
-        if (c == '\\' && i + 1 < group_content.length()) {
+        if (c == '\\' && i + 1 < static_cast<int>(group_content.length())) {
             current += c;
             current += group_content[++i];
         } 
@@ -173,14 +177,16 @@ std::vector<int> match_group(const std::string& input_line, int input_pos, const
 
     // Try each alternative and capture matched content for backreferences
     for (const std::string& alt : alternatives) {
-        std::vector<int> alt_results = match_pattern(input_line, input_pos, alt, 0);
+        std::vector<int> alt_results = match_pattern(input_line, input_pos, alt, 0, group_index + 1);
         
         // For each successful match, capture the matched text for backreferences
         for (int end_pos : alt_results) {
             if (end_pos > input_pos) {
                 // Store the matched text as a backreference
                 std::string matched_text = input_line.substr(input_pos, end_pos - input_pos);
-                backreferences.push_back(matched_text);
+                if (group_index > 0 && group_index <= static_cast<int>(backreferences.size())) {
+                    backreferences[group_index - 1] = matched_text;
+                }
             }
         }
         
@@ -191,7 +197,7 @@ std::vector<int> match_group(const std::string& input_line, int input_pos, const
 }
 
 // Handle quantifiers (?, +)
-std::vector<int> match_quantifier(const std::string& input_line, int input_pos, const std::string& pattern, int pattern_pos) {
+std::vector<int> match_quantifier(const std::string& input_line, int input_pos, const std::string& pattern, int pattern_pos, int group_index) {
     std::vector<int> results;
 
     // Base case: reached end of pattern
@@ -225,25 +231,25 @@ std::vector<int> match_quantifier(const std::string& input_line, int input_pos, 
             // Match 0 times
             results.push_back(input_pos);
             // Match 1 time
-            std::vector<int> group_results = match_group(input_line, input_pos, group_content);
+            std::vector<int> group_results = match_group(input_line, input_pos, group_content, group_index + 1);
             results.insert(results.end(), group_results.begin(), group_results.end());
         } 
         else if (quantifier == '+') {
             // Must match at least once
-            std::vector<int> first_match = match_group(input_line, input_pos, group_content);
+            std::vector<int> first_match = match_group(input_line, input_pos, group_content, group_index + 1);
             for (int end_pos : first_match) {
                 // push one repetition
                 results.push_back(end_pos);
                 
                 // allow recursion: try more repetitions
-                std::vector<int> more = match_quantifier(input_line, end_pos, pattern, pattern_pos);
+                std::vector<int> more = match_quantifier(input_line, end_pos, pattern, pattern_pos, group_index + 1);
                 results.insert(results.end(), more.begin(), more.end());
             }
         }
         // TODO: Add support for quantifiers like * (zero or more) and {n,m} (between n and m times)
         else {
             // No quantifier - match exactly once
-            results = match_group(input_line, input_pos, group_content);
+            results = match_group(input_line, input_pos, group_content, group_index + 1);
         }
         return results;
     }
@@ -312,11 +318,11 @@ std::vector<int> match_quantifier(const std::string& input_line, int input_pos, 
 }
 
 // Match pattern starting at given positions
-std::vector<int> match_pattern(const std::string& input_line, int input_pos, const std::string& pattern, int pattern_pos) {
+std::vector<int> match_pattern(const std::string& input_line, int input_pos, const std::string& pattern, int pattern_pos, int group_index) {
     std::vector<int> results;
 
     // Base case: reached end of pattern
-    if (pattern_pos >= pattern.length()) {
+    if (pattern_pos >= static_cast<int>(pattern.length())) {
         results.push_back(input_pos);
         return results;
     }
@@ -326,7 +332,7 @@ std::vector<int> match_pattern(const std::string& input_line, int input_pos, con
         if (input_pos != 0) {
             return results;
         }
-        return match_pattern(input_line, input_pos, pattern, pattern_pos + 1);
+        return match_pattern(input_line, input_pos, pattern, pattern_pos + 1, group_index);
     }
     
     // Handle end anchor
@@ -334,21 +340,20 @@ std::vector<int> match_pattern(const std::string& input_line, int input_pos, con
         if (input_pos != input_line.length()) {
             return results;
         }
-        return match_pattern(input_line, input_pos, pattern, pattern_pos + 1);
+        return match_pattern(input_line, input_pos, pattern, pattern_pos + 1, group_index);
     }
     
     // Handle backreferences (multi-character)
-    if (pattern[pattern_pos] == '\\' && pattern_pos + 1 < pattern.length() && 
-        std::isdigit(pattern[pattern_pos + 1])) {
+    if (pattern[pattern_pos] == '\\' && pattern_pos + 1 < static_cast<int>(pattern.length()) && std::isdigit(pattern[pattern_pos + 1])) {
+        
         int backref_num = pattern[pattern_pos + 1] - '0';
-        if (backref_num > 0 && backref_num <= backreferences.size()) {
+        if (backref_num > 0 && backref_num <= static_cast<int>(backreferences.size())) {
             std::string backref_text = backreferences[backref_num - 1];
             
             // Check if the backreference matches at current position
-            if (input_pos + backref_text.length() <= input_line.length() &&
-                input_line.substr(input_pos, backref_text.length()) == backref_text) {
+            if (input_pos + static_cast<int>(backref_text.length()) <= static_cast<int>(input_line.length()) && input_line.substr(input_pos, backref_text.length()) == backref_text) {
                 // Match found, continue with rest of pattern
-                return match_pattern(input_line, input_pos + backref_text.length(), pattern, pattern_pos + 2);
+                return match_pattern(input_line, input_pos + backref_text.length(), pattern, pattern_pos + 2, group_index);
             }
             // No match
             return results;
@@ -362,16 +367,16 @@ std::vector<int> match_pattern(const std::string& input_line, int input_pos, con
     int next_pattern_pos = pattern_pos + elem_len;
     
     // Skip quantifier if present
-    if (next_pattern_pos < pattern.length() && (pattern[next_pattern_pos] == '?' || pattern[next_pattern_pos] == '+')) {
+    if (next_pattern_pos < static_cast<int>(pattern.length()) && (pattern[next_pattern_pos] == '?' || pattern[next_pattern_pos] == '+')) {
         next_pattern_pos++;
     }
     
     // Get all possible positions after matching current element
-    std::vector<int> possible_positions = match_quantifier(input_line, input_pos, pattern, pattern_pos);
+    std::vector<int> possible_positions = match_quantifier(input_line, input_pos, pattern, pattern_pos, group_index);
     
     // Continue matching from each possible position
     for (int next_input_pos : possible_positions) {
-        std::vector<int> remaining = match_pattern(input_line, next_input_pos, pattern, next_pattern_pos);
+        std::vector<int> remaining = match_pattern(input_line, next_input_pos, pattern, next_pattern_pos, group_index);
         results.insert(results.end(), remaining.begin(), remaining.end());
     }
     return results;
@@ -379,19 +384,30 @@ std::vector<int> match_pattern(const std::string& input_line, int input_pos, con
 
 // Match complete string against pattern
 bool match_string(const std::string& input_line, const std::string& pattern) {
+
+    int group_count = count_groups(pattern);
+    if (group_count > 0) {
+        backreferences.assign(group_count, ""); // Clear the list and give it fixed-size storage
+    } else {
+        backreferences.clear();
+    }
+
     // Check if pattern has start anchor
     bool has_start_anchor = !pattern.empty() && pattern[0] == '^';
     
     if (has_start_anchor) {
         // Must match from the beginning
-        backreferences.clear(); // Clear backreferences for new match attempt
-        std::vector<int> results = match_pattern(input_line, 0, pattern, 0);
+        std::vector<int> results = match_pattern(input_line, 0, pattern, 0, 0);
         return !results.empty();
     } else {
         // Can match anywhere in the input
-        for (int i = 0; i <= input_line.length(); i++) {
-            backreferences.clear(); // Clear backreferences for each new position
-            std::vector<int> results = match_pattern(input_line, i, pattern, 0);
+        for (int i = 0; i <= static_cast<int>(input_line.length()); i++) {
+            if (group_count > 0) {
+                backreferences.assign(group_count, ""); // Clear the list and give it fixed-size storage
+            } else {
+                backreferences.clear();
+            }
+            std::vector<int> results = match_pattern(input_line, i, pattern, 0, 0);
             if (!results.empty()) {
                 return true;
             }
