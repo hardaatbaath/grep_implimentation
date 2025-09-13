@@ -6,11 +6,28 @@
 #include <cstring>
 #include <algorithm>
 
-// Global variable to store backreferences
-std::vector<std::string> backreferences;
+// Thread-local storage for backreferences with proper context handling
+thread_local std::vector<std::string> backreferences;
 
 // Forward declaration
 std::vector<int> match_pattern(const std::string& input_line, int input_pos, const std::string& pattern, int pattern_pos, int group_index);
+
+// Recursively resolve backreferences within captured text
+std::string resolve_backref(const std::string& text, const std::vector<std::string>& captures) {
+    std::string result;
+    for (int i = 0; i < static_cast<int>(text.size()); i++) {
+        if (text[i] == '\\' && i + 1 < static_cast<int>(text.size()) && std::isdigit(text[i+1])) {
+            int num = text[i+1] - '0';
+            if (num > 0 && num <= static_cast<int>(captures.size()) && !captures[num-1].empty()) {
+                result += resolve_backref(captures[num-1], captures); // recursive resolution
+            }
+            i++; // skip the digit
+        } else {
+            result += text[i];
+        }
+    }
+    return result;
+}
 
 // Count total number of capturing groups
 int count_groups(const std::string& pattern) {
@@ -171,21 +188,9 @@ std::vector<int> match_group(const std::string& input_line, int input_pos, const
         alternatives.push_back(current);
     }
 
-    // Try each alternative and capture matched content for backreferences
+    // Try each alternative
     for (const std::string& alt : alternatives) {
         std::vector<int> alt_results = match_pattern(input_line, input_pos, alt, 0, group_index + 1);
-        
-        // For each successful match, capture the matched text for backreferences
-        for (int end_pos : alt_results) {
-            if (end_pos > input_pos) {
-                // Store the matched text as a backreference
-                std::string matched_text = input_line.substr(input_pos, end_pos - input_pos);
-                if (group_index > 0 && group_index <= static_cast<int>(backreferences.size())) {
-                    backreferences[group_index - 1] = matched_text;
-                }
-            }
-        }
-        
         results.insert(results.end(), alt_results.begin(), alt_results.end());
     }
     
@@ -218,35 +223,63 @@ std::vector<int> match_quantifier(const std::string& input_line, int input_pos, 
         }
     }
 
-    // Process capturing groups
+    // Process capturing groups with proper context handling
     if (pattern[pattern_pos] == '(') {
         int close = find_closing_bracket(pattern, pattern_pos, '(');
         std::string group_content = pattern.substr(pattern_pos + 1, close - pattern_pos - 1);
 
+        // Save current capture state
+        auto saved_captures = backreferences;
+        
         if (quantifier == '?') {
-            // Match 0 times
-            results.push_back(input_pos);
-            // Match 1 time
-            std::vector<int> group_results = match_group(input_line, input_pos, group_content, group_index + 1);
+            results.push_back(input_pos); // match 0 times
+            
+            // Try matching 1 time with local capture context
+            std::vector<int> group_results = match_group(input_line, input_pos, group_content, group_index);
+            for (int end_pos : group_results) {
+                if (end_pos > input_pos && group_index > 0 && group_index <= static_cast<int>(backreferences.size())) {
+                    // Capture the matched text for this group
+                    std::string matched_text = input_line.substr(input_pos, end_pos - input_pos);
+                    backreferences[group_index - 1] = matched_text;
+                }
+            }
             results.insert(results.end(), group_results.begin(), group_results.end());
         } 
         else if (quantifier == '+') {
             // Require at least one match
-            std::vector<int> first_match = match_group(input_line, input_pos, group_content, group_index + 1);
+            std::vector<int> first_match = match_group(input_line, input_pos, group_content, group_index);
             for (int end_pos : first_match) {
-                // push one repetition
+                if (end_pos > input_pos && group_index > 0 && group_index <= static_cast<int>(backreferences.size())) {
+                    // Capture the matched text for this group (first match only for + quantifier)
+                    std::string matched_text = input_line.substr(input_pos, end_pos - input_pos);
+                    backreferences[group_index - 1] = matched_text;
+                }
                 results.push_back(end_pos);
                 
                 // Try additional repetitions recursively
-                std::vector<int> more = match_quantifier(input_line, end_pos, pattern, pattern_pos, group_index + 1);
+                std::vector<int> more = match_quantifier(input_line, end_pos, pattern, pattern_pos, group_index);
                 results.insert(results.end(), more.begin(), more.end());
             }
         }
-        // TODO: Add support for quantifiers like * (zero or more) and {n,m} (between n and m times)
+        // TODO: Add support for * and {n,m} quantifiers
         else {
             // Match exactly once
-            results = match_group(input_line, input_pos, group_content, group_index + 1);
+            std::vector<int> group_results = match_group(input_line, input_pos, group_content, group_index);
+            for (int end_pos : group_results) {
+                if (end_pos > input_pos && group_index > 0 && group_index <= static_cast<int>(backreferences.size())) {
+                    // Capture the matched text for this group
+                    std::string matched_text = input_line.substr(input_pos, end_pos - input_pos);
+                    backreferences[group_index - 1] = matched_text;
+                }
+            }
+            results = group_results;
         }
+        
+        // If no results, restore previous capture state
+        if (results.empty()) {
+            backreferences = saved_captures;
+        }
+        
         return results;
     }
     
@@ -339,22 +372,24 @@ std::vector<int> match_pattern(const std::string& input_line, int input_pos, con
         return match_pattern(input_line, input_pos, pattern, pattern_pos + 1, group_index);
     }
     
-    // Handle backreferences (multi-character)
+    // Handle backreferences (multi-character) with recursive resolution
     if (pattern[pattern_pos] == '\\' && pattern_pos + 1 < static_cast<int>(pattern.length()) && std::isdigit(pattern[pattern_pos + 1])) {
         
         int backref_num = pattern[pattern_pos + 1] - '0';
-        if (backref_num > 0 && backref_num <= static_cast<int>(backreferences.size())) {
-            std::string backref_text = backreferences[backref_num - 1];
+        if (backref_num > 0 && backref_num <= static_cast<int>(backreferences.size()) && !backreferences[backref_num - 1].empty()) {
+            // Resolve backreference recursively to handle nested references
+            std::string backref_text = resolve_backref(backreferences[backref_num - 1], backreferences);
             
-            // Check if the backreference matches at current position
-            if (input_pos + static_cast<int>(backref_text.length()) <= static_cast<int>(input_line.length()) && input_line.substr(input_pos, backref_text.length()) == backref_text) {
+            // Check if the resolved backreference matches at current position
+            if (input_pos + static_cast<int>(backref_text.length()) <= static_cast<int>(input_line.length()) && 
+                input_line.substr(input_pos, backref_text.length()) == backref_text) {
                 // Match found, continue with rest of pattern
                 return match_pattern(input_line, input_pos + backref_text.length(), pattern, pattern_pos + 2, group_index);
             }
             // No match
             return results;
         }
-        // Invalid backreference number
+        // Invalid or empty backreference
         return results;
     }
     
