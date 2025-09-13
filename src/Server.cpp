@@ -190,7 +190,7 @@ std::vector<int> match_group(const std::string& input_line, int input_pos, const
 
     // Try each alternative
     for (const std::string& alt : alternatives) {
-        std::vector<int> alt_results = match_pattern(input_line, input_pos, alt, 0, group_index);
+        std::vector<int> alt_results = match_pattern(input_line, input_pos, alt, 0, group_index + 1);
         results.insert(results.end(), alt_results.begin(), alt_results.end());
     }
     
@@ -235,7 +235,7 @@ std::vector<int> match_quantifier(const std::string& input_line, int input_pos, 
             results.push_back(input_pos); // match 0 times
             
             // Try matching 1 time with local capture context
-            std::vector<int> group_results = match_group(input_line, input_pos, group_content, group_index + 1);
+            std::vector<int> group_results = match_group(input_line, input_pos, group_content, group_index);
             for (int end_pos : group_results) {
                 if (end_pos > input_pos && group_index + 1 <= static_cast<int>(backreferences.size())) {
                     // Capture the matched text for this group
@@ -247,7 +247,7 @@ std::vector<int> match_quantifier(const std::string& input_line, int input_pos, 
         } 
         else if (quantifier == '+') {
             // Require at least one match
-            std::vector<int> first_match = match_group(input_line, input_pos, group_content, group_index + 1);
+            std::vector<int> first_match = match_group(input_line, input_pos, group_content, group_index);
             for (int end_pos : first_match) {
                 if (end_pos > input_pos && group_index + 1 <= static_cast<int>(backreferences.size())) {
                     // Capture the matched text for this group (first match only for + quantifier)
@@ -264,7 +264,7 @@ std::vector<int> match_quantifier(const std::string& input_line, int input_pos, 
         // TODO: Add support for * and {n,m} quantifiers
         else {
             // Match exactly once
-            std::vector<int> group_results = match_group(input_line, input_pos, group_content, group_index + 1);
+            std::vector<int> group_results = match_group(input_line, input_pos, group_content, group_index);
             for (int end_pos : group_results) {
                 if (end_pos > input_pos && group_index + 1 <= static_cast<int>(backreferences.size())) {
                     // Capture the matched text for this group
