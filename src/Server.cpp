@@ -455,6 +455,7 @@ int main(int argc, char* argv[]) {
                 std::cerr << "Filesystem error: " << e.what() << std::endl;
                 return 1;
             }
+            // Return 0 if matches found, 1 if not
             return (line_count > 0) ? 0 : 1;
         }
         else {
