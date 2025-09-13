@@ -69,15 +69,15 @@ int find_closing_bracket(const std::string& pattern, int start, char open_bracke
                 continue;
             }
             if (pattern[i] == ']') {
-                return i; // return index of ']'
+                return i;
             }
             i++;
         }
         return i; // not found; return end
     }
 
-    // open_bracket == '('
-    int depth = 1; //* Depth counter to keep track of the nested groups
+    // Handle parentheses groups with nesting
+    int depth = 1;
     while (i < static_cast<int>(pattern.length()) && depth > 0) {
         if (pattern[i] == '\\') {
             i += 2; // skip escaped char
@@ -90,17 +90,17 @@ int find_closing_bracket(const std::string& pattern, int start, char open_bracke
     return i - 1; // position of ')'
 }
 
-// Get length of pattern element at current position
+// Calculate length of pattern element (char, escape, class, or group)
 int get_element_length(const std::string& pattern, int idx) {
     if (idx >= pattern.length()) return 0;
 
-    if (pattern[idx] == '\\') return 2; // Default for escape sequences
-    else if (pattern[idx] == '[') return find_closing_bracket(pattern, idx, '[') - idx + 1; 
-    else if (pattern[idx] == '(') return find_closing_bracket(pattern, idx, '(') - idx + 1; 
-    else return 1;
+    if (pattern[idx] == '\\') return 2; // escape sequences
+    else if (pattern[idx] == '[') return find_closing_bracket(pattern, idx, '[') - idx + 1; // char class
+    else if (pattern[idx] == '(') return find_closing_bracket(pattern, idx, '(') - idx + 1; // group
+    else return 1; // single character
 }
 
-// Match single character at specific position
+// Check if single character matches at given position
 bool match_position(const std::string& input_line, int input_pos, const std::string& pattern, int pattern_pos) {
     if (input_pos >= input_line.length()) {
         return false;
@@ -108,25 +108,26 @@ bool match_position(const std::string& input_line, int input_pos, const std::str
 
     char current_char = input_line[input_pos];
 
-    // Handle escape sequences
+    // Process escape sequences
     if (pattern[pattern_pos] == '\\' && pattern_pos + 1 < pattern.length()) {
         char next = pattern[pattern_pos + 1];
         if (next == 'd') {
-            return std::isdigit(current_char);
+            return std::isdigit(current_char); // digit shorthand
         }
         else if (next == 'w') {
-            return std::isalnum(current_char) || current_char == '_';
+            return std::isalnum(current_char) || current_char == '_'; // word character
         }
         else {
-            return current_char == next;
+            return current_char == next; // literal escaped character
         }
     }
 
-    // Match any character
+    // Wildcard matches any character
     if (pattern[pattern_pos] == '.') {
         return true;
     }
 
+    // Direct character match
     return current_char == pattern[pattern_pos];
 }
 
@@ -134,39 +135,34 @@ bool match_position(const std::string& input_line, int input_pos, const std::str
 std::vector<int> match_group(const std::string& input_line, int input_pos, const std::string& group_content, int group_index) {
     std::vector<int> results;
 
-    // Split by | while respecting nested groups
+    // Parse alternatives separated by | (respecting nesting)
     std::vector<std::string> alternatives;
     std::string current;
     int depth = 0;
 
-    // Parse alternatives separated by |
+    // Split group content by | at top level only
     for (int i = 0; i < static_cast<int>(group_content.length()); i++) {
         char c = group_content[i];
         
         // Handle escaped characters
         if (c == '\\' && i + 1 < static_cast<int>(group_content.length())) {
             current += c;
-            current += group_content[++i];
+            current += group_content[++i]; // include escaped char
         } 
-        // Handle new nested groups
         else if (c == '(') {
-            // Increase depth
-            depth++;
+            depth++; // enter nested group
             current += c;
         } 
-        // Handle old nested groups
         else if (c == ')') {
-            depth--;
+            depth--; // exit nested group
             current += c;
         } 
-        // Handle alternation
         else if (c == '|' && depth == 0) {
-            alternatives.push_back(current);
+            alternatives.push_back(current); // top-level alternation
             current = "";
         }  
-        // Handle regular characters
         else {
-            current += c;
+            current += c; // regular character
         }
     }
 
@@ -196,7 +192,7 @@ std::vector<int> match_group(const std::string& input_line, int input_pos, const
     return results;
 }
 
-// Handle quantifiers (?, +)
+// Apply quantifiers (?, +) to pattern elements
 std::vector<int> match_quantifier(const std::string& input_line, int input_pos, const std::string& pattern, int pattern_pos, int group_index) {
     std::vector<int> results;
 
@@ -222,7 +218,7 @@ std::vector<int> match_quantifier(const std::string& input_line, int input_pos, 
         }
     }
 
-    // Handle parentheses groups
+    // Process capturing groups
     if (pattern[pattern_pos] == '(') {
         int close = find_closing_bracket(pattern, pattern_pos, '(');
         std::string group_content = pattern.substr(pattern_pos + 1, close - pattern_pos - 1);
@@ -235,20 +231,20 @@ std::vector<int> match_quantifier(const std::string& input_line, int input_pos, 
             results.insert(results.end(), group_results.begin(), group_results.end());
         } 
         else if (quantifier == '+') {
-            // Must match at least once
+            // Require at least one match
             std::vector<int> first_match = match_group(input_line, input_pos, group_content, group_index + 1);
             for (int end_pos : first_match) {
                 // push one repetition
                 results.push_back(end_pos);
                 
-                // allow recursion: try more repetitions
+                // Try additional repetitions recursively
                 std::vector<int> more = match_quantifier(input_line, end_pos, pattern, pattern_pos, group_index + 1);
                 results.insert(results.end(), more.begin(), more.end());
             }
         }
         // TODO: Add support for quantifiers like * (zero or more) and {n,m} (between n and m times)
         else {
-            // No quantifier - match exactly once
+            // Match exactly once
             results = match_group(input_line, input_pos, group_content, group_index + 1);
         }
         return results;
@@ -437,6 +433,7 @@ int main(int argc, char* argv[]) {
     std::string flag = argv[1 + arg_offset];
     std::string pattern = argv[2 + arg_offset];
 
+    // Validate extended regex flag
     if (flag != "-E") {
         std::cerr << "Expected first argument to be '-E'" << std::endl;
         return 1;
