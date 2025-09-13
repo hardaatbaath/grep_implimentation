@@ -6,6 +6,9 @@
 #include <cstring>
 #include <algorithm>
 
+// Global variable to store backreferences
+std::vector<std::string> backreferences;
+
 // Forward declaration
 std::vector<int> match_pattern(const std::string& input_line, int input_pos, const std::string& pattern, int pattern_pos);
 
@@ -31,6 +34,7 @@ std::pair<std::string, bool> parse_char_class(const std::string& pattern, int st
 
 // Match character against character class
 bool match_char_class(char c, const std::string& char_class, bool negated) {
+    // TODO: Add support for ranges like a-z, 0-9, etc.
     bool found = char_class.find(c) != std::string::npos;
     return negated ? !found : found;
 }
@@ -38,6 +42,8 @@ bool match_char_class(char c, const std::string& char_class, bool negated) {
 // Find matching closing bracket/paren with proper escaping and depth, with seperation of logic for [] and ()
 int find_closing_bracket(const std::string& pattern, int start, char open_bracket) {
     int i = start + 1;
+
+    //* Here static_cast is used for safer explicit conversion from size_t or other formats to int
     if (open_bracket == '[') {
         // Skip leading '^' in negated character classes
         if (i < static_cast<int>(pattern.length()) && pattern[i] == '^') {
@@ -45,7 +51,7 @@ int find_closing_bracket(const std::string& pattern, int start, char open_bracke
         }
         // Scan until unescaped ']'
         while (i < static_cast<int>(pattern.length())) {
-            if (pattern[i] == '\\') {
+            if (pattern[i] == '\\') { //* Unnecessary optimization for large sentences
                 i += 2; // skip escaped char
                 continue;
             }
@@ -58,7 +64,7 @@ int find_closing_bracket(const std::string& pattern, int start, char open_bracke
     }
 
     // open_bracket == '('
-    int depth = 1;
+    int depth = 1; //* Depth counter to keep track of the nested groups
     while (i < static_cast<int>(pattern.length()) && depth > 0) {
         if (pattern[i] == '\\') {
             i += 2; // skip escaped char
@@ -98,6 +104,15 @@ bool match_position(const std::string& input_line, int input_pos, const std::str
         else if (next == 'w') {
             return std::isalnum(current_char) || current_char == '_';
         }
+        else if (std::isdigit(next)) {
+            // Handle backreferences - this is now handled in match_pattern for multi-character backreferences
+            int backref_num = next - '0';
+            if (backref_num < backreferences.size() && backref_num > 0) {
+                // For single character comparison in this context
+                return backreferences[backref_num].length() == 1 && backreferences[backref_num][0] == current_char;
+            }
+            return false;
+        }
         else {
             return current_char == next;
         }
@@ -111,7 +126,7 @@ bool match_position(const std::string& input_line, int input_pos, const std::str
     return current_char == pattern[pattern_pos];
 }
 
-// Handle groups with alternation (|)
+// Handle groups with alternation (|) and capture for backreferences
 std::vector<int> match_group(const std::string& input_line, int input_pos, const std::string& group_content) {
     std::vector<int> results;
 
@@ -156,9 +171,19 @@ std::vector<int> match_group(const std::string& input_line, int input_pos, const
         alternatives.push_back(current);
     }
 
-    // Try each alternative
+    // Try each alternative and capture matched content for backreferences
     for (const std::string& alt : alternatives) {
         std::vector<int> alt_results = match_pattern(input_line, input_pos, alt, 0);
+        
+        // For each successful match, capture the matched text for backreferences
+        for (int end_pos : alt_results) {
+            if (end_pos > input_pos) {
+                // Store the matched text as a backreference
+                std::string matched_text = input_line.substr(input_pos, end_pos - input_pos);
+                backreferences.push_back(matched_text);
+            }
+        }
+        
         results.insert(results.end(), alt_results.begin(), alt_results.end());
     }
     
@@ -215,6 +240,7 @@ std::vector<int> match_quantifier(const std::string& input_line, int input_pos, 
                 results.insert(results.end(), more.begin(), more.end());
             }
         }
+        // TODO: Add support for quantifiers like * (zero or more) and {n,m} (between n and m times)
         else {
             // No quantifier - match exactly once
             results = match_group(input_line, input_pos, group_content);
@@ -311,6 +337,26 @@ std::vector<int> match_pattern(const std::string& input_line, int input_pos, con
         return match_pattern(input_line, input_pos, pattern, pattern_pos + 1);
     }
     
+    // Handle backreferences (multi-character)
+    if (pattern[pattern_pos] == '\\' && pattern_pos + 1 < pattern.length() && 
+        std::isdigit(pattern[pattern_pos + 1])) {
+        int backref_num = pattern[pattern_pos + 1] - '0';
+        if (backref_num > 0 && backref_num <= backreferences.size()) {
+            std::string backref_text = backreferences[backref_num - 1];
+            
+            // Check if the backreference matches at current position
+            if (input_pos + backref_text.length() <= input_line.length() &&
+                input_line.substr(input_pos, backref_text.length()) == backref_text) {
+                // Match found, continue with rest of pattern
+                return match_pattern(input_line, input_pos + backref_text.length(), pattern, pattern_pos + 2);
+            }
+            // No match
+            return results;
+        }
+        // Invalid backreference number
+        return results;
+    }
+    
     // Get element length and check for quantifier
     int elem_len = get_element_length(pattern, pattern_pos);
     int next_pattern_pos = pattern_pos + elem_len;
@@ -338,11 +384,13 @@ bool match_string(const std::string& input_line, const std::string& pattern) {
     
     if (has_start_anchor) {
         // Must match from the beginning
+        backreferences.clear(); // Clear backreferences for new match attempt
         std::vector<int> results = match_pattern(input_line, 0, pattern, 0);
         return !results.empty();
     } else {
         // Can match anywhere in the input
         for (int i = 0; i <= input_line.length(); i++) {
+            backreferences.clear(); // Clear backreferences for each new position
             std::vector<int> results = match_pattern(input_line, i, pattern, 0);
             if (!results.empty()) {
                 return true;
