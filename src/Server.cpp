@@ -9,7 +9,7 @@
 // Thread-local storage for backreferences with proper context handling
 thread_local std::vector<std::string> backreferences;
 
-// Forward declaration
+// Forward declaration of match_pattern
 std::vector<int> match_pattern(const std::string& input_line, int input_pos, const std::string& pattern, int pattern_pos, int group_index);
 
 // Recursively resolve backreferences within captured text
