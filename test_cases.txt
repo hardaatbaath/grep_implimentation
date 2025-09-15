@@ -1,0 +1,308 @@
+remote: [tester::#XE5] Running tests for Stage #XE5 (Backreferences - Nested Backreferences)
+remote: [tester::#XE5] $ echo -n "'cat and cat' is the same as 'cat and cat'" | ./your_program.sh -E "('(cat) and \2') is the same as \1"
+remote: [tester::#XE5] ✓ Received exit code 0.
+remote: [tester::#XE5] $ echo -n "'cat and cat' is the same as 'cat and dog'" | ./your_program.sh -E "('(cat) and \2') is the same as \1"
+remote: [tester::#XE5] ✓ Received exit code 1.
+remote: [tester::#XE5] $ echo -n "grep 101 is doing grep 101 times, and again grep 101 times" | ./your_program.sh -E "((\w\w\w\w) (\d\d\d)) is doing \2 \3 times, and again \1 times"
+remote: [tester::#XE5] ✓ Received exit code 0.
+remote: [tester::#XE5] $ echo -n "$?! 101 is doing $?! 101 times, and again $?! 101 times" | ./your_program.sh -E "((\w\w\w) (\d\d\d)) is doing \2 \3 times, and again \1 times"
+remote: [tester::#XE5] ✓ Received exit code 1.
+remote: [tester::#XE5] $ echo -n "grep yes is doing grep yes times, and again grep yes times" | ./your_program.sh -E "((\w\w\w\w) (\d\d\d)) is doing \2 \3 times, and again \1 times"
+remote: [tester::#XE5] ✓ Received exit code 1.
+remote: [tester::#XE5] $ echo -n "abc-def is abc-def, not efg, abc, or def" | ./your_program.sh -E "(([abc]+)-([def]+)) is \1, not ([^xyz]+), \2, or \3"
+remote: [tester::#XE5] ✓ Received exit code 0.
+remote: [tester::#XE5] $ echo -n "efg-hij is efg-hij, not klm, efg, or hij" | ./your_program.sh -E "(([abc]+)-([def]+)) is \1, not ([^xyz]+), \2, or \3"
+remote: [tester::#XE5] ✓ Received exit code 1.
+remote: [tester::#XE5] $ echo -n "abc-def is abc-def, not xyz, abc, or def" | ./your_program.sh -E "(([abc]+)-([def]+)) is \1, not ([^xyz]+), \2, or \3"
+remote: [tester::#XE5] ✓ Received exit code 1.
+remote: [tester::#XE5] $ echo -n "apple pie is made of apple and pie. love apple pie" | ./your_program.sh -E "^((\w+) (\w+)) is made of \2 and \3. love \1$"
+remote: [tester::#XE5] ✓ Received exit code 0.
+remote: [tester::#XE5] $ echo -n "pineapple pie is made of apple and pie. love apple pie" | ./your_program.sh -E "^((apple) (\w+)) is made of \2 and \3. love \1$"
+remote: [tester::#XE5] ✓ Received exit code 1.
+remote: [tester::#XE5] $ echo -n "apple pie is made of apple and pie. love apple pies" | ./your_program.sh -E "^((\w+) (pie)) is made of \2 and \3. love \1$"
+remote: [tester::#XE5] ✓ Received exit code 1.
+remote: [tester::#XE5] $ echo -n "'howwdy hey there' is made up of 'howwdy' and 'hey'. howwdy hey there" | ./your_program.sh -E "'((how+dy) (he?y) there)' is made up of '\2' and '\3'. \1"
+remote: [tester::#XE5] ✓ Received exit code 0.
+remote: [tester::#XE5] $ echo -n "'hody hey there' is made up of 'hody' and 'hey'. hody hey there" | ./your_program.sh -E "'((how+dy) (he?y) there)' is made up of '\2' and '\3'. \1"
+remote: [tester::#XE5] ✓ Received exit code 1.
+remote: [tester::#XE5] $ echo -n "'howwdy heeey there' is made up of 'howwdy' and 'heeey'. howwdy heeey there" | ./your_program.sh -E "'((how+dy) (he?y) there)' is made up of '\2' and '\3'. \1"
+remote: [tester::#XE5] ✓ Received exit code 1.
+remote: [tester::#XE5] $ echo -n "cat and fish, cat with fish, cat and fish" | ./your_program.sh -E "((c.t|d.g) and (f..h|b..d)), \2 with \3, \1"
+remote: [tester::#XE5] ✓ Received exit code 0.
+remote: [tester::#XE5] $ echo -n "bat and fish, bat with fish, bat and fish" | ./your_program.sh -E "((c.t|d.g) and (f..h|b..d)), \2 with \3, \1"
+remote: [tester::#XE5] ✓ Received exit code 1.
+remote: [tester::#XE5] Test passed.
+remote: 
+remote: [tester::#TG1] Running tests for Stage #TG1 (Backreferences - Multiple Backreferences)
+remote: [tester::#TG1] $ echo -n "3 red squares and 3 red circles" | ./your_program.sh -E "(\d+) (\w+) squares and \1 \2 circles"
+remote: [tester::#TG1] ✓ Received exit code 0.
+remote: [tester::#TG1] $ echo -n "3 red squares and 4 red circles" | ./your_program.sh -E "(\d+) (\w+) squares and \1 \2 circles"
+remote: [tester::#TG1] ✓ Received exit code 1.
+remote: [tester::#TG1] $ echo -n "grep 101 is doing grep 101 times" | ./your_program.sh -E "(\w\w\w\w) (\d\d\d) is doing \1 \2 times"
+remote: [tester::#TG1] ✓ Received exit code 0.
+remote: [tester::#TG1] $ echo -n "$?! 101 is doing $?! 101 times" | ./your_program.sh -E "(\w\w\w) (\d\d\d) is doing \1 \2 times"
+remote: [tester::#TG1] ✓ Received exit code 1.
+remote: [tester::#TG1] $ echo -n "grep yes is doing grep yes times" | ./your_program.sh -E "(\w\w\w\w) (\d\d\d) is doing \1 \2 times"
+remote: [tester::#TG1] ✓ Received exit code 1.
+remote: [tester::#TG1] $ echo -n "abc-def is abc-def, not efg" | ./your_program.sh -E "([abc]+)-([def]+) is \1-\2, not [^xyz]+"
+remote: [tester::#TG1] ✓ Received exit code 0.
+remote: [tester::#TG1] $ echo -n "efg-hij is efg-hij, not efg" | ./your_program.sh -E "([abc]+)-([def]+) is \1-\2, not [^xyz]+"
+remote: [tester::#TG1] ✓ Received exit code 1.
+remote: [tester::#TG1] $ echo -n "abc-def is abc-def, not xyz" | ./your_program.sh -E "([abc]+)-([def]+) is \1-\2, not [^xyz]+"
+remote: [tester::#TG1] ✓ Received exit code 1.
+remote: [tester::#TG1] $ echo -n "apple pie, apple and pie" | ./your_program.sh -E "^(\w+) (\w+), \1 and \2$"
+remote: [tester::#TG1] ✓ Received exit code 0.
+remote: [tester::#TG1] $ echo -n "pineapple pie, pineapple and pie" | ./your_program.sh -E "^(apple) (\w+), \1 and \2$"
+remote: [tester::#TG1] ✓ Received exit code 1.
+remote: [tester::#TG1] $ echo -n "apple pie, apple and pies" | ./your_program.sh -E "^(\w+) (pie), \1 and \2$"
+remote: [tester::#TG1] ✓ Received exit code 1.
+remote: [tester::#TG1] $ echo -n "howwdy hey there, howwdy hey" | ./your_program.sh -E "(how+dy) (he?y) there, \1 \2"
+remote: [tester::#TG1] ✓ Received exit code 0.
+remote: [tester::#TG1] $ echo -n "hody hey there, howwdy hey" | ./your_program.sh -E "(how+dy) (he?y) there, \1 \2"
+remote: [tester::#TG1] ✓ Received exit code 1.
+remote: [tester::#TG1] $ echo -n "howwdy heeey there, howwdy heeey" | ./your_program.sh -E "(how+dy) (he?y) there, \1 \2"
+remote: [tester::#TG1] ✓ Received exit code 1.
+remote: [tester::#TG1] $ echo -n "cat and fish, cat with fish" | ./your_program.sh -E "(c.t|d.g) and (f..h|b..d), \1 with \2"
+remote: [tester::#TG1] ✓ Received exit code 0.
+remote: [tester::#TG1] $ echo -n "bat and fish, cat with fish" | ./your_program.sh -E "(c.t|d.g) and (f..h|b..d), \1 with \2"
+remote: [tester::#TG1] ✓ Received exit code 1.
+remote: [tester::#TG1] Test passed.
+remote: 
+remote: [tester::#SB5] Running tests for Stage #SB5 (Backreferences - Single Backreference)
+remote: [tester::#SB5] $ echo -n "cat and cat" | ./your_program.sh -E "(cat) and \1"
+remote: [tester::#SB5] ✓ Received exit code 0.
+remote: [tester::#SB5] $ echo -n "cat and dog" | ./your_program.sh -E "(cat) and \1"
+remote: [tester::#SB5] ✓ Received exit code 1.
+remote: [tester::#SB5] $ echo -n "grep 101 is doing grep 101 times" | ./your_program.sh -E "(\w\w\w\w \d\d\d) is doing \1 times"
+remote: [tester::#SB5] ✓ Received exit code 0.
+remote: [tester::#SB5] $ echo -n "$?! 101 is doing $?! 101 times" | ./your_program.sh -E "(\w\w\w \d\d\d) is doing \1 times"
+remote: [tester::#SB5] ✓ Received exit code 1.
+remote: [tester::#SB5] $ echo -n "grep yes is doing grep yes times" | ./your_program.sh -E "(\w\w\w\w \d\d\d) is doing \1 times"
+remote: [tester::#SB5] ✓ Received exit code 1.
+remote: [tester::#SB5] $ echo -n "abcd is abcd, not efg" | ./your_program.sh -E "([abcd]+) is \1, not [^xyz]+"
+remote: [tester::#SB5] ✓ Received exit code 0.
+remote: [tester::#SB5] $ echo -n "efgh is efgh, not efg" | ./your_program.sh -E "([abcd]+) is \1, not [^xyz]+"
+remote: [tester::#SB5] ✓ Received exit code 1.
+remote: [tester::#SB5] $ echo -n "abcd is abcd, not xyz" | ./your_program.sh -E "([abcd]+) is \1, not [^xyz]+"
+remote: [tester::#SB5] ✓ Received exit code 1.
+remote: [tester::#SB5] $ echo -n "this starts and ends with this" | ./your_program.sh -E "^(\w+) starts and ends with \1$"
+remote: [tester::#SB5] ✓ Received exit code 0.
+remote: [tester::#SB5] $ echo -n "that starts and ends with this" | ./your_program.sh -E "^(this) starts and ends with \1$"
+remote: [tester::#SB5] ✓ Received exit code 1.
+remote: [tester::#SB5] $ echo -n "this starts and ends with this?" | ./your_program.sh -E "^(this) starts and ends with \1$"
+remote: [tester::#SB5] ✓ Received exit code 1.
+remote: [tester::#SB5] $ echo -n "once a dreaaamer, always a dreaaamer" | ./your_program.sh -E "once a (drea+mer), alwaysz? a \1"
+remote: [tester::#SB5] ✓ Received exit code 0.
+remote: [tester::#SB5] $ echo -n "once a dremer, always a dreaaamer" | ./your_program.sh -E "once a (drea+mer), alwaysz? a \1"
+remote: [tester::#SB5] ✓ Received exit code 1.
+remote: [tester::#SB5] $ echo -n "once a dreaaamer, alwayszzz a dreaaamer" | ./your_program.sh -E "once a (drea+mer), alwaysz? a \1"
+remote: [tester::#SB5] ✓ Received exit code 1.
+remote: [tester::#SB5] $ echo -n "bugs here and bugs there" | ./your_program.sh -E "(b..s|c..e) here and \1 there"
+remote: [tester::#SB5] ✓ Received exit code 0.
+remote: [tester::#SB5] $ echo -n "bugz here and bugs there" | ./your_program.sh -E "(b..s|c..e) here and \1 there"
+remote: [tester::#SB5] ✓ Received exit code 1.
+remote: [tester::#SB5] Test passed.
+remote: 
+remote: [tester::#YX6] Running tests for Stage #YX6 (File Search - Recursive search)
+remote: [tester::#YX6] [setup] echo "orange" > "dir/fruits-3322.txt"
+remote: [tester::#YX6] [setup] echo "pear" >> "dir/fruits-3322.txt"
+remote: [tester::#YX6] [setup] echo "potato" > "dir/subdir/vegetables-4851.txt"
+remote: [tester::#YX6] [setup] echo "celery" >> "dir/subdir/vegetables-4851.txt"
+remote: [tester::#YX6] [setup] echo "cauliflower" >> "dir/subdir/vegetables-4851.txt"
+remote: [tester::#YX6] [setup] echo "onion" > "dir/vegetables-3671.txt"
+remote: [tester::#YX6] [setup] echo "pumpkin" >> "dir/vegetables-3671.txt"
+remote: [tester::#YX6] [setup] echo "cucumber" >> "dir/vegetables-3671.txt"
+remote: [tester::#YX6] $ ./your_program.sh -r -E .+er dir/
+remote: [your_program] dir/subdir/vegetables-4851.txt:cauliflower
+remote: [your_program] dir/subdir/vegetables-4851.txt:celery
+remote: [your_program] dir/vegetables-3671.txt:cucumber
+remote: [tester::#YX6] ✓ Received exit code 0.
+remote: [tester::#YX6] ✓ Stdout contains 3 expected line(s)
+remote: [tester::#YX6] $ ./your_program.sh -r -E .+ar dir/
+remote: [your_program] dir/fruits-3322.txt:pear
+remote: [tester::#YX6] ✓ Received exit code 0.
+remote: [tester::#YX6] ✓ Stdout contains 1 expected line(s)
+remote: [tester::#YX6] $ ./your_program.sh -r -E missing_fruit dir/
+remote: [tester::#YX6] ✓ Received exit code 1.
+remote: [tester::#YX6] ✓ Stdout contains 1 expected line(s)
+remote: [tester::#YX6] Test passed.
+remote: 
+remote: [tester::#IS6] Running tests for Stage #IS6 (File Search - Search multiple files)
+remote: [tester::#IS6] [setup] echo "blueberry" > "fruits-1873.txt"
+remote: [tester::#IS6] [setup] echo "raspberry" >> "fruits-1873.txt"
+remote: [tester::#IS6] [setup] echo "zucchini" > "vegetables-6903.txt"
+remote: [tester::#IS6] [setup] echo "onion" >> "vegetables-6903.txt"
+remote: [tester::#IS6] $ ./your_program.sh -E bl.+$ fruits-1873.txt vegetables-6903.txt
+remote: [your_program] fruits-1873.txt:blueberry
+remote: [tester::#IS6] ✓ Received exit code 0.
+remote: [tester::#IS6] ✓ Stdout contains 1 expected line(s)
+remote: [tester::#IS6] $ ./your_program.sh -E missing_fruit fruits-1873.txt vegetables-6903.txt
+remote: [tester::#IS6] ✓ Received exit code 1.
+remote: [tester::#IS6] ✓ Stdout contains 1 expected line(s)
+remote: [tester::#IS6] $ ./your_program.sh -E zucchini fruits-1873.txt vegetables-6903.txt
+remote: [your_program] vegetables-6903.txt:zucchini
+remote: [tester::#IS6] ✓ Received exit code 0.
+remote: [tester::#IS6] ✓ Stdout contains 1 expected line(s)
+remote: [tester::#IS6] Test passed.
+remote: 
+remote: [tester::#OL9] Running tests for Stage #OL9 (File Search - Search a multi-line file)
+remote: [tester::#OL9] [setup] echo "mango" > "fruits-8305.txt"
+remote: [tester::#OL9] [setup] echo "pineapple" >> "fruits-8305.txt"
+remote: [tester::#OL9] [setup] echo "blueberry" >> "fruits-8305.txt"
+remote: [tester::#OL9] [setup] echo "strawberry" >> "fruits-8305.txt"
+remote: [tester::#OL9] $ ./your_program.sh -E .+berry fruits-8305.txt
+remote: [your_program] blueberry
+remote: [your_program] strawberry
+remote: [tester::#OL9] ✓ Received exit code 0.
+remote: [tester::#OL9] ✓ Stdout contains 2 expected line(s)
+remote: [tester::#OL9] $ ./your_program.sh -E tomato fruits-8305.txt
+remote: [tester::#OL9] ✓ Received exit code 1.
+remote: [tester::#OL9] ✓ Stdout contains 1 expected line(s)
+remote: [tester::#OL9] $ ./your_program.sh -E mango fruits-8305.txt
+remote: [your_program] mango
+remote: [tester::#OL9] ✓ Received exit code 0.
+remote: [tester::#OL9] ✓ Stdout contains 1 expected line(s)
+remote: [tester::#OL9] Test passed.
+remote: 
+remote: [tester::#DR5] Running tests for Stage #DR5 (File Search - Search a single-line file)
+remote: [tester::#DR5] [setup] echo "raspberry" > "fruits-8276.txt"
+remote: [tester::#DR5] $ ./your_program.sh -E rasp.+ fruits-8276.txt
+remote: [your_program] raspberry
+remote: [tester::#DR5] ✓ Received exit code 0.
+remote: [tester::#DR5] ✓ Stdout contains 1 expected line(s)
+remote: [tester::#DR5] $ ./your_program.sh -E carrot fruits-8276.txt
+remote: [tester::#DR5] ✓ Received exit code 1.
+remote: [tester::#DR5] ✓ Stdout contains 1 expected line(s)
+remote: [tester::#DR5] $ ./your_program.sh -E .+berry fruits-8276.txt
+remote: [your_program] raspberry
+remote: [tester::#DR5] ✓ Received exit code 0.
+remote: [tester::#DR5] ✓ Stdout contains 1 expected line(s)
+remote: [tester::#DR5] Test passed.
+remote: 
+remote: [tester::#ZM7] Running tests for Stage #ZM7 (Alternation)
+remote: [tester::#ZM7] $ echo -n "a cat" | ./your_program.sh -E "a (cat|dog)"
+remote: [tester::#ZM7] ✓ Received exit code 0.
+remote: [tester::#ZM7] $ echo -n "a cow" | ./your_program.sh -E "a (cat|dog)"
+remote: [tester::#ZM7] ✓ Received exit code 1.
+remote: [tester::#ZM7] $ echo -n "I see 1 cat, 2 dogs and 3 cows" | ./your_program.sh -E "^I see (\d (cat|dog|cow)s?(, | and )?)+$"
+remote: [tester::#ZM7] ✓ Received exit code 0.
+remote: [tester::#ZM7] $ echo -n "I see 1 cat, 2 dogs and 3 cows" | ./your_program.sh -E "^I see (\d (cat|dog|cow)(, | and )?)+$"
+remote: [tester::#ZM7] ✓ Received exit code 1.
+remote: [tester::#ZM7] Test passed.
+remote: 
+remote: [tester::#ZB3] Running tests for Stage #ZB3 (Wildcard)
+remote: [tester::#ZB3] $ echo -n "cat" | ./your_program.sh -E "c.t"
+remote: [tester::#ZB3] ✓ Received exit code 0.
+remote: [tester::#ZB3] $ echo -n "car" | ./your_program.sh -E "c.t"
+remote: [tester::#ZB3] ✓ Received exit code 1.
+remote: [tester::#ZB3] $ echo -n "goøö0Ogol" | ./your_program.sh -E "g.+gol"
+remote: [tester::#ZB3] ✓ Received exit code 0.
+remote: [tester::#ZB3] $ echo -n "gol" | ./your_program.sh -E "g.+gol"
+remote: [tester::#ZB3] ✓ Received exit code 1.
+remote: [tester::#ZB3] Test passed.
+remote: 
+remote: [tester::#NY8] Running tests for Stage #NY8 (Match zero or one times)
+remote: [tester::#NY8] $ echo -n "cat" | ./your_program.sh -E "ca?t"
+remote: [tester::#NY8] ✓ Received exit code 0.
+remote: [tester::#NY8] $ echo -n "act" | ./your_program.sh -E "ca?t"
+remote: [tester::#NY8] ✓ Received exit code 0.
+remote: [tester::#NY8] $ echo -n "dog" | ./your_program.sh -E "ca?t"
+remote: [tester::#NY8] ✓ Received exit code 1.
+remote: [tester::#NY8] $ echo -n "cag" | ./your_program.sh -E "ca?t"
+remote: [tester::#NY8] ✓ Received exit code 1.
+remote: [tester::#NY8] Test passed.
+remote: 
+remote: [tester::#FZ7] Running tests for Stage #FZ7 (Match one or more times)
+remote: [tester::#FZ7] $ echo -n "cat" | ./your_program.sh -E "ca+t"
+remote: [tester::#FZ7] ✓ Received exit code 0.
+remote: [tester::#FZ7] $ echo -n "caaats" | ./your_program.sh -E "ca+at"
+remote: [tester::#FZ7] ✓ Received exit code 0.
+remote: [tester::#FZ7] $ echo -n "act" | ./your_program.sh -E "ca+t"
+remote: [tester::#FZ7] ✓ Received exit code 1.
+remote: [tester::#FZ7] $ echo -n "ca" | ./your_program.sh -E "ca+t"
+remote: [tester::#FZ7] ✓ Received exit code 1.
+remote: [tester::#FZ7] Test passed.
+remote: 
+remote: [tester::#AO7] Running tests for Stage #AO7 (End of string anchor)
+remote: [tester::#AO7] $ echo -n "blueberry_strawberry" | ./your_program.sh -E "strawberry$"
+remote: [tester::#AO7] ✓ Received exit code 0.
+remote: [tester::#AO7] $ echo -n "strawberry_blueberry" | ./your_program.sh -E "strawberry$"
+remote: [tester::#AO7] ✓ Received exit code 1.
+remote: [tester::#AO7] $ echo -n "orange" | ./your_program.sh -E "^orange$"
+remote: [tester::#AO7] ✓ Received exit code 0.
+remote: [tester::#AO7] $ echo -n "orange_orange" | ./your_program.sh -E "^orange$"
+remote: [tester::#AO7] ✓ Received exit code 1.
+remote: [tester::#AO7] Test passed.
+remote: 
+remote: [tester::#RR8] Running tests for Stage #RR8 (Start of string anchor)
+remote: [tester::#RR8] $ echo -n "apple_blueberry" | ./your_program.sh -E "^apple"
+remote: [tester::#RR8] ✓ Received exit code 0.
+remote: [tester::#RR8] $ echo -n "blueberry_apple" | ./your_program.sh -E "^apple"
+remote: [tester::#RR8] ✓ Received exit code 1.
+remote: [tester::#RR8] Test passed.
+remote: 
+remote: [tester::#SH9] Running tests for Stage #SH9 (Combining Character Classes)
+remote: [tester::#SH9] $ echo -n "sally has 3 apples" | ./your_program.sh -E "\d apple"
+remote: [tester::#SH9] ✓ Received exit code 0.
+remote: [tester::#SH9] $ echo -n "sally has 1 orange" | ./your_program.sh -E "\d apple"
+remote: [tester::#SH9] ✓ Received exit code 1.
+remote: [tester::#SH9] $ echo -n "sally has 124 apples" | ./your_program.sh -E "\d\d\d apples"
+remote: [tester::#SH9] ✓ Received exit code 0.
+remote: [tester::#SH9] $ echo -n "sally has 12 apples" | ./your_program.sh -E "\d\\d\\d apples"
+remote: [tester::#SH9] ✓ Received exit code 1.
+remote: [tester::#SH9] $ echo -n "sally has 3 dogs" | ./your_program.sh -E "\d \w\w\ws"
+remote: [tester::#SH9] ✓ Received exit code 0.
+remote: [tester::#SH9] $ echo -n "sally has 4 dogs" | ./your_program.sh -E "\d \w\w\ws"
+remote: [tester::#SH9] ✓ Received exit code 0.
+remote: [tester::#SH9] $ echo -n "sally has 1 dog" | ./your_program.sh -E "\d \w\w\ws"
+remote: [tester::#SH9] ✓ Received exit code 1.
+remote: [tester::#SH9] Test passed.
+remote: 
+remote: [tester::#RK3] Running tests for Stage #RK3 (Negative Character Groups)
+remote: [tester::#RK3] $ echo -n "apple" | ./your_program.sh -E "[^xyz]"
+remote: [tester::#RK3] ✓ Received exit code 0.
+remote: [tester::#RK3] $ echo -n "apple" | ./your_program.sh -E "[^abc]"
+remote: [tester::#RK3] ✓ Received exit code 0.
+remote: [tester::#RK3] $ echo -n "banana" | ./your_program.sh -E "[^anb]"
+remote: [tester::#RK3] ✓ Received exit code 1.
+remote: [tester::#RK3] $ echo -n "orange" | ./your_program.sh -E "[^opq]"
+remote: [tester::#RK3] ✓ Received exit code 0.
+remote: [tester::#RK3] Test passed.
+remote: 
+remote: [tester::#TL6] Running tests for Stage #TL6 (Positive Character Groups)
+remote: [tester::#TL6] $ echo -n "e" | ./your_program.sh -E "[strawberry]"
+remote: [tester::#TL6] ✓ Received exit code 0.
+remote: [tester::#TL6] $ echo -n "ecd" | ./your_program.sh -E "[strawberry]"
+remote: [tester::#TL6] ✓ Received exit code 0.
+remote: [tester::#TL6] $ echo -n "pear" | ./your_program.sh -E "[bcdf]"
+remote: [tester::#TL6] ✓ Received exit code 1.
+remote: [tester::#TL6] $ echo -n "[]" | ./your_program.sh -E "[pineapple]"
+remote: [tester::#TL6] ✓ Received exit code 1.
+remote: [tester::#TL6] Test passed.
+remote: 
+remote: [tester::#MR9] Running tests for Stage #MR9 (Match word characters)
+remote: [tester::#MR9] $ echo -n "blueberry" | ./your_program.sh -E "\w"
+remote: [tester::#MR9] ✓ Received exit code 0.
+remote: [tester::#MR9] $ echo -n "PINEAPPLE" | ./your_program.sh -E "\w"
+remote: [tester::#MR9] ✓ Received exit code 0.
+remote: [tester::#MR9] $ echo -n "241" | ./your_program.sh -E "\w"
+remote: [tester::#MR9] ✓ Received exit code 0.
+remote: [tester::#MR9] $ echo -n "-=%_-#×" | ./your_program.sh -E "\w"
+remote: [tester::#MR9] ✓ Received exit code 0.
+remote: [tester::#MR9] $ echo -n "×%+#=-" | ./your_program.sh -E "\w"
+remote: [tester::#MR9] ✓ Received exit code 1.
+remote: [tester::#MR9] Test passed.
+remote: 
+remote: [tester::#OQ2] Running tests for Stage #OQ2 (Match digits)
+remote: [tester::#OQ2] $ echo -n "123" | ./your_program.sh -E "\d"
+remote: [tester::#OQ2] ✓ Received exit code 0.
+remote: [tester::#OQ2] $ echo -n "apple" | ./your_program.sh -E "\d"
+remote: [tester::#OQ2] ✓ Received exit code 1.
+remote: [tester::#OQ2] Test passed.
+remote: 
+remote: [tester::#CQ2] Running tests for Stage #CQ2 (Match a literal character)
+remote: [tester::#CQ2] $ echo -n "dog" | ./your_program.sh -E "d"
+remote: [tester::#CQ2] ✓ Received exit code 0.
+remote: [tester::#CQ2] $ echo -n "dog" | ./your_program.sh -E "f"
+remote: [tester::#CQ2] ✓ Received exit code 1.
+remote: [tester::#CQ2] Test passed.
